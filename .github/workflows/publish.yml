@@ -1,0 +1,50 @@
+# Publishes Alan's projects to https://majest.github.io/claude-alan/
+#
+# This runs by itself whenever something lands on main. It only ever touches
+# this repo's own GitHub Pages site, so it needs no passwords, keys or tokens.
+#
+# Alan: you don't need to do anything here. Just add your project and push.
+
+name: Publish
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:      # lets a grown-up run it by hand from the Actions tab
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# If two pushes happen close together, let the newer one win.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: Get the code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0        # full history, so projects can be sorted by when they were added
+
+      - name: Build the site
+        run: node .github/scripts/build.mjs
+
+      - name: Get Pages ready
+        uses: actions/configure-pages@v5
+
+      - name: Package it up
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Put it on the web
+        id: deploy
+        uses: actions/deploy-pages@v4
