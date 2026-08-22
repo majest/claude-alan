@@ -159,7 +159,8 @@ function page(list){
         ${esc(CHILD)}'s first project is on its way.
       </div>`;
 
-  const count = list.length === 1 ? '1 project' : `${list.length} projects`;
+  const count = !list.length ? 'nothing yet'
+    : list.length === 1 ? '1 project' : `${list.length} projects`;
 
   return `<!doctype html>
 <html lang="en">
@@ -178,7 +179,7 @@ function page(list){
   --pink:#FF48B0; --blue:#0078BF; --green:#00A95C; --yellow:#FFC800;
   --paper:#FBF3E4; --ink:#241D18; --ink-2:#6B5D50; --ink-3:#9C8B7A;
   --rule:#DCCDB2; --card:#FFFBF2; --shadow:rgba(36,29,24,.20);
-  --blend:multiply; --grain:.28; --halftone:.10;
+  --blend:multiply; --grain:.28; --halftone:.10; --blob-alpha:.34;
   --display:'Fraunces','Hoefler Text',Georgia,'Times New Roman',serif;
   --body:'Karla','Trebuchet MS','Helvetica Neue',Arial,sans-serif;
   --mine:${INK};
@@ -187,15 +188,15 @@ function page(list){
   :root{
     --paper:#181A23; --ink:#F4ECDD; --ink-2:#B0A899; --ink-3:#7E786C;
     --rule:#33374A; --card:#20232E; --shadow:rgba(0,0,0,.55);
-    --blend:screen; --grain:.20; --halftone:.16;
+    --blend:screen; --grain:.20; --halftone:.16; --blob-alpha:.20;
   }
 }
 *,*::before,*::after{box-sizing:border-box}
-html{-webkit-text-size-adjust:100%}
+html{-webkit-text-size-adjust:100%;overflow-x:clip}
 body{
   margin:0; background:var(--paper); color:var(--ink);
   font-family:var(--body); font-size:clamp(16px,.55vw + 14.5px,18px);
-  line-height:1.6; overflow-x:hidden; position:relative;
+  line-height:1.6; overflow-x:clip; position:relative;
 }
 body::before{
   content:""; position:fixed; inset:0; pointer-events:none; z-index:9;
@@ -207,18 +208,18 @@ a{color:inherit}
 :focus-visible{outline:3px solid var(--pink);outline-offset:3px;border-radius:4px}
 
 .masthead{position:relative;padding:clamp(3rem,7vw,5.5rem) 0 clamp(2rem,4vw,3rem);isolation:isolate}
-.blobs{position:absolute;inset:-10% -20% 0;z-index:-1;pointer-events:none;filter:blur(2px)}
-.blob{position:absolute;border-radius:50%;mix-blend-mode:var(--blend);opacity:.5;animation:float 18s ease-in-out infinite}
-.blob.a{width:22vw;height:22vw;left:4%;top:2%;background:var(--yellow)}
-.blob.b{width:16vw;height:16vw;left:30%;top:-8%;background:var(--pink);animation-delay:-7s}
-.blob.c{width:19vw;height:19vw;right:10%;top:6%;background:var(--mine);animation-delay:-12s}
+.blobs{position:absolute;inset:-30% -15% -10%;z-index:-1;pointer-events:none;filter:blur(70px)}
+.blob{position:absolute;border-radius:50%;mix-blend-mode:var(--blend);opacity:var(--blob-alpha);animation:float 22s ease-in-out infinite}
+.blob.a{width:28vw;height:28vw;left:-2%;top:16%;background:var(--yellow)}
+.blob.b{width:22vw;height:22vw;left:28%;top:-6%;background:var(--pink);animation-delay:-8s}
+.blob.c{width:25vw;height:25vw;right:4%;top:20%;background:var(--mine);animation-delay:-14s}
 @keyframes float{
   0%,100%{transform:translate3d(0,0,0) scale(1)}
   33%{transform:translate3d(2.2vw,-1.4vw,0) scale(1.07)}
   66%{transform:translate3d(-1.6vw,1.7vw,0) scale(.95)}
 }
 .back{
-  display:inline-block;margin-bottom:1.4rem;font-weight:700;font-size:.85rem;
+  display:block;width:max-content;margin-bottom:1.4rem;font-weight:700;font-size:.85rem;
   letter-spacing:.14em;text-transform:uppercase;color:var(--ink-2);
   text-decoration:none;border-bottom:2px solid var(--rule);padding-bottom:2px;
 }
@@ -227,11 +228,8 @@ a{color:inherit}
   margin:0;font-family:var(--display);
   font-variation-settings:'SOFT' 60,'WONK' 1,'opsz' 144;
   font-weight:900;font-size:clamp(3rem,11vw,7rem);line-height:.88;
-  letter-spacing:-.025em;position:relative;display:inline-block;transform:rotate(-1.5deg);
-}
-.masthead h1::after{
-  content:attr(data-echo);position:absolute;left:.085em;top:.05em;
-  color:var(--mine);mix-blend-mode:var(--blend);z-index:-1;pointer-events:none;
+  letter-spacing:-.025em;display:inline-block;transform:rotate(-1.5deg);
+  text-shadow:.05em .04em 0 var(--mine);
 }
 .count{
   display:block;margin-top:1.3rem;font-size:.82rem;font-weight:700;
@@ -243,7 +241,7 @@ a{color:inherit}
   background-size:11px 11px;
 }
 main{padding:clamp(2.5rem,5vw,4rem) 0}
-.grid{display:grid;gap:clamp(1.4rem,2.6vw,2.2rem);grid-template-columns:repeat(auto-fill,minmax(272px,1fr))}
+.grid{display:grid;gap:clamp(1.4rem,2.6vw,2.2rem);grid-template-columns:repeat(auto-fill,minmax(min(272px,100%),1fr));max-width:calc(var(--cols,3) * 23rem)}
 .card{
   position:relative;display:flex;flex-direction:column;
   padding:1.6rem 1.5rem 1.4rem;background:var(--card);
@@ -314,7 +312,7 @@ footer a:hover{color:var(--ink);border-color:var(--pink)}
   </div>
   <div class="wrap">
     <a class="back" href="/">&larr; All the wonderful things</a>
-    <h1 data-echo="${esc(CHILD)}'s projects">${esc(CHILD)}'s projects</h1>
+    <h1>${esc(CHILD)}'s projects</h1>
     <span class="count">${count}</span>
   </div>
 </header>
@@ -322,7 +320,7 @@ footer a:hover{color:var(--ink);border-color:var(--pink)}
 <div class="halftone" aria-hidden="true"></div>
 
 <main class="wrap">
-  <div class="grid">${cards}
+  <div class="grid" style="--cols:${Math.min(Math.max(list.length, 2), 4)}">${cards}
   </div>
 </main>
 

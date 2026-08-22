@@ -35,11 +35,16 @@ The folder name becomes the web address, so `projects/star-map/` ends up at
 
 **1. `index.html` — the project itself.**
 
-It has to start with this line, on its own, at the very top:
+It has to start with these two lines, in this order, at the very top:
 
 ```html
 <!doctype html>
+<meta charset="utf-8">
 ```
+
+Both matter. Without the first, browsers fall back to an old rendering mode and
+the layout goes strange. Without the second, every accent, arrow, emoji and `·`
+in the page turns into mojibake like `Â·`.
 
 Then the rest of the page. The rules for what goes inside:
 
@@ -132,7 +137,7 @@ If a project idea needs any of those to work, it needs a different idea. Say so.
 ## A checklist before you finish
 
 - [ ] The folder is `projects/<lowercase-hyphen-name>/`
-- [ ] `index.html` starts with `<!doctype html>`
+- [ ] `index.html` starts with `<!doctype html>` and `<meta charset="utf-8">`
 - [ ] Everything is in that one file, and it runs when you open it
 - [ ] `project.json` has `title`, `emoji` and `description`
 - [ ] The description is two plain sentences a child would understand
