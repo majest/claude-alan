@@ -40,9 +40,19 @@ function addedOn(slug){
   } catch { return null; }
 }
 
+/* The folder name becomes part of a url, so hold it to the rule CLAUDE.md
+   sets out rather than letting anything odd through into a link. */
+const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+
 function readProject(slug){
   const dir  = path.join(PROJECTS, slug);
   const meta = path.join(dir, 'project.json');
+
+  if (!SLUG.test(slug)){
+    problems.push(`projects/${slug}/ was skipped: folder names must be lowercase `
+      + `letters, numbers and hyphens, like "star-map".`);
+    return null;
+  }
 
   if (!fs.existsSync(meta)){
     problems.push(`projects/${slug}/ has no project.json, so it was skipped.`);
