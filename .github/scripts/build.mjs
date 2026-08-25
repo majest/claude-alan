@@ -29,6 +29,23 @@ const BASE     = `/${REPO}/`;
 
 const problems = [];
 
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const FULL   = ['January','February','March','April','May','June',
+                'July','August','September','October','November','December'];
+
+/* Read the calendar date straight off the ISO string rather than through a
+   Date, so a project committed just after midnight keeps the day it was
+   actually made instead of shifting a day in another timezone. */
+function stamp(iso){
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso ?? ''));
+  if (!m) return '';
+  const [, y, mo, d] = m;
+  const i = Number(mo) - 1;
+  if (!MONTHS[i]) return '';
+  return `<time class="stamp" datetime="${y}-${mo}-${d}"`
+    + ` title="Made ${Number(d)} ${FULL[i]} ${y}">${Number(d)} ${MONTHS[i]} ${y}</time>`;
+}
+
 /* Date of the commit that first added a project folder. Used only for
    ordering, so if git can't tell us we just carry on without it. */
 function addedOn(slug){
@@ -154,7 +171,10 @@ function page(list){
 
   const cards = list.length ? list.map((p, i) => `
       <article class="card" style="--tilt:${tilts[i % tilts.length]}deg; --delay:${i * 70}ms">
-        <div class="sticker" aria-hidden="true">${esc(p.emoji)}</div>
+        <div class="card-top">
+          <div class="sticker" aria-hidden="true">${esc(p.emoji)}</div>
+          ${stamp(p.added)}
+        </div>
         <h2>${esc(p.title)}</h2>
         <p>${esc(p.description)}</p>
         <div class="actions">
@@ -265,11 +285,21 @@ main{padding:clamp(2.5rem,5vw,4rem) 0}
   to{opacity:1}
 }
 .card:hover,.card:focus-within{transform:rotate(0) translateY(-7px);box-shadow:10px 13px 0 var(--mine)}
+.card-top{
+  display:flex;align-items:center;justify-content:space-between;gap:.9rem;margin-bottom:1.1rem;
+}
 .sticker{
-  width:64px;height:64px;display:grid;place-items:center;font-size:33px;line-height:1;
-  border-radius:50%;background:var(--mine);border:2px solid var(--ink);margin-bottom:1.1rem;
+  width:64px;height:64px;flex:none;display:grid;place-items:center;font-size:33px;line-height:1;
+  border-radius:50%;background:var(--mine);border:2px solid var(--ink);
   transform:rotate(calc(var(--tilt) * -2.2));transition:transform .3s cubic-bezier(.34,1.5,.5,1);
 }
+.stamp{
+  flex:none;font-size:.68rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+  white-space:nowrap;color:var(--ink-3);border:2px solid var(--rule);border-radius:999px;
+  padding:.28rem .62rem;transform:rotate(calc(var(--tilt) * -1.5));
+  transition:transform .3s cubic-bezier(.34,1.5,.5,1),color .2s ease,border-color .2s ease;
+}
+.card:hover .stamp{transform:rotate(0);color:var(--ink-2);border-color:var(--ink-3)}
 .card:hover .sticker{transform:rotate(0) scale(1.09)}
 .card h2{
   margin:0 0 .5rem;font-family:var(--display);
