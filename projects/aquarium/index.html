@@ -1,0 +1,2372 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aquarium</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; height: 100%; overflow: hidden; background: #201b29;
+  }
+  body {
+    font-family: ui-rounded, "Avenir Next", "Segoe UI", system-ui, sans-serif;
+    -webkit-user-select: none; user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: none;
+  }
+  canvas { display: block; width: 100%; height: 100%; cursor: pointer; }
+
+  .chip {
+    background: rgba(10, 22, 34, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    color: #eaf4ff;
+    padding: 7px 13px;
+    border-radius: 999px;
+    font-size: 15px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  #hud {
+    position: fixed; top: 10px; left: 10px;
+    display: flex; gap: 8px; flex-wrap: wrap;
+    pointer-events: none;
+  }
+  #status {
+    position: fixed; top: 108px; right: 12px; width: 186px;
+    background: rgba(10, 22, 34, 0.72);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 14px; padding: 11px 13px 13px;
+    color: #eaf4ff; pointer-events: none;
+  }
+  #status[hidden] { display: none; }
+  .statName { font-size: 17px; font-weight: 800; margin-bottom: 9px; }
+  .statRow { display: flex; align-items: center; gap: 8px; margin-top: 7px; }
+  .statLabel { font-size: 13px; font-weight: 700; width: 54px; flex: none; }
+  .statLabel.ill { color: #ff7d6b; }
+  /* named statBar, not bar — .bar is already the header row of a panel */
+  .statBar { flex: 1; height: 10px; border-radius: 5px; background: rgba(255,255,255,.15); overflow: hidden; }
+  .statBar i { display: block; height: 100%; border-radius: 5px; }
+
+  #hint {
+    position: fixed; bottom: 12px; left: 50%;
+    transform: translateX(-50%);
+    max-width: 92vw; text-align: center;
+    pointer-events: none;
+  }
+
+  /* --- the Shop button in the top row --- */
+  /* keeps the Shop button on its own line so it never shuffles about */
+  #hud .break { flex-basis: 100%; height: 0; }
+  .chip.button { pointer-events: auto; cursor: pointer; }
+  .chip.shop {
+    background: #e5a600;
+    border-color: rgba(255, 255, 255, 0.55);
+    color: #ffffff;
+    text-shadow: 0 1px 2px rgba(110, 74, 0, 0.5);
+    letter-spacing: 0.4px;
+  }
+  .chip.shop:active { transform: translateY(1px); }
+  .chip.helpchip {
+    background: #2f7fd0;
+    border-color: rgba(255, 255, 255, 0.5);
+    color: #ffffff;
+    text-shadow: 0 1px 2px rgba(0, 40, 80, 0.45);
+    letter-spacing: 0.4px;
+  }
+  .chip.helpchip:active { transform: translateY(1px); }
+
+  /* --- the shop itself, laid over the top of the tank --- */
+  body.shopping #hint { display: none; }
+  body.shopping #hud > :not(.shop):not(.helpchip) { display: none; }
+  body.shopping .chip.shop, body.shopping .chip.helpchip { visibility: hidden; }
+  body.shopping #status { display: none; }
+
+  #shop {
+    position: fixed; inset: 0;
+    background: rgba(14, 12, 24, 0.84);
+    display: flex; align-items: center; justify-content: center;
+    padding: 14px;
+  }
+  #shop[hidden] { display: none; }
+  #help {
+    position: fixed; inset: 0;
+    background: rgba(14, 12, 24, 0.84);
+    display: flex; align-items: center; justify-content: center;
+    padding: 14px;
+  }
+  #help[hidden] { display: none; }
+  #help h3 { margin: 18px 0 6px; font-size: 18px; }
+  #help h3:first-of-type { margin-top: 2px; }
+  #help ol { margin: 0; padding-left: 22px; }
+  #help li { font-size: 15px; line-height: 1.5; margin: 5px 0; }
+  #help b { color: #ffd76a; }
+  .panel {
+    width: min(560px, 100%);
+    max-height: 94vh; overflow-y: auto;
+    background: #241f33;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 18px;
+    padding: 14px 16px 18px;
+    color: #eaf4ff;
+  }
+  .bar { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+  .bar .title { flex: 1; text-align: center; font-size: 23px; font-weight: 800; }
+  .bar button {
+    flex: none; width: 42px; height: 42px;
+    border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.18);
+    background: rgba(255, 255, 255, 0.08); color: #eaf4ff;
+    font-size: 23px; line-height: 1; cursor: pointer;
+  }
+  .bar .gap { flex: none; width: 42px; }
+
+  /* --- the four big tabs --- */
+  .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .tab {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 8px; min-height: 112px; padding: 10px;
+    border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.18);
+    background: linear-gradient(#3b3357, #2c2643);
+    color: #eaf4ff; font-family: inherit; font-size: 19px; font-weight: 700;
+    cursor: pointer;
+  }
+  .tab:active { transform: translateY(1px); }
+  .tab.wide { grid-column: 1 / -1; min-height: 92px; }
+  .tabEmoji { font-size: 32px; }
+
+  /* --- the list of tanks --- */
+  .list { display: flex; flex-direction: column; gap: 12px; }
+  .row {
+    display: flex; align-items: center; gap: 16px;
+    padding: 12px; border-radius: 14px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  .row .words { display: flex; flex-direction: column; gap: 5px; }
+  .row .state { font-size: 18px; font-weight: 700; }
+  .row .price { font-size: 17px; font-weight: 700; color: #ffd76a; }
+  .row.owned .state { color: #8ff0b0; }
+
+  .mini { flex: none; width: 108px; height: 70px; border-radius: 6px; position: relative; overflow: hidden; }
+  .mini.tank { background: linear-gradient(#3fa9c8, #155f80); border: 4px solid #1a2732; }
+  .minibox { flex: none; width: 108px; display: flex; align-items: center; justify-content: center; }
+  .mini.tank .sand {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 22%;
+    background: linear-gradient(#e8d3a0, #b99a67);
+  }
+  .mini.tank .fish {
+    position: absolute; left: 34%; top: 32%; width: 26%; height: 18%;
+    border-radius: 50%; background: linear-gradient(#ffd06a, #df5f18);
+  }
+  .mini.tank .fish::after {
+    content: ""; position: absolute; left: -10px; top: 1px;
+    border: 6px solid transparent; border-left-color: #ff8f34;
+  }
+  .mini.locked { background: #0d0d11; border: 4px solid #000; display: flex; align-items: center; justify-content: center; }
+  .lock { position: relative; width: 26px; height: 20px; }
+  .lock .body { width: 26px; height: 20px; border-radius: 5px; background: #fff; }
+  .lock .shackle {
+    position: absolute; left: 5px; top: -11px; width: 16px; height: 13px;
+    border: 4px solid #fff; border-bottom: none; border-radius: 9px 9px 0 0;
+  }
+
+  .row .buy {
+    align-self: flex-start; margin-top: 4px;
+    padding: 8px 18px; border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: linear-gradient(#43b866, #2f8b4a);
+    color: #fff; font-family: inherit; font-size: 16px; font-weight: 700;
+    cursor: pointer;
+  }
+  .row .buy:active { transform: translateY(1px); }
+  .row .buy[disabled] {
+    background: rgba(255, 255, 255, 0.07);
+    color: rgba(234, 244, 255, 0.45);
+    cursor: default;
+  }
+  .row .equipped { font-size: 17px; font-weight: 700; color: #ffd76a; }
+  .row .equip {
+    align-self: flex-start; margin-top: 4px;
+    padding: 8px 18px; border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: linear-gradient(#4f7fd6, #3a5fa8);
+    color: #fff; font-family: inherit; font-size: 16px; font-weight: 700;
+    cursor: pointer;
+  }
+  .row .equip:active { transform: translateY(1px); }
+
+  .mini.icon {
+    display: flex; align-items: center; justify-content: center; font-size: 38px;
+    background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.12);
+  }
+  .row .what { font-size: 14px; line-height: 1.35; color: rgba(234, 244, 255, 0.72); }
+  .mini.pic { object-fit: contain; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.12); }
+  .row .equip.take { background: linear-gradient(#8a6bbf, #6a4fa0); }
+
+  .cashLine { margin: -4px 0 16px; text-align: center; font-size: 20px; font-weight: 800; color: #ffd76a; }
+
+  .note { margin: 18px 0 0; text-align: center; font-size: 15px; color: rgba(234, 244, 255, 0.7); }
+  .note.big { margin: 34px 0; font-size: 17px; }
+</style>
+
+<canvas id="tank"></canvas>
+
+<div id="hud">
+  <div class="chip" id="holding">Empty hands</div>
+  <div class="chip" id="mess">All clean</div>
+  <div class="chip" id="watchers">1 person watching</div>
+  <div class="chip" id="cash">$0</div>
+  <div class="break"></div>
+  <div class="chip button shop" id="shopBtn">Shop</div>
+  <div class="chip button helpchip" id="helpBtn">Help</div>
+</div>
+<div id="status" hidden>
+  <div class="statName" id="statName">Goldfish</div>
+  <div class="statRow">
+    <span class="statLabel" id="statHealthLabel">Health</span>
+    <span class="statBar"><i id="statHealthBar"></i></span>
+  </div>
+  <div class="statRow">
+    <span class="statLabel">Hunger</span>
+    <span class="statBar"><i id="statHungerBar"></i></span>
+  </div>
+</div>
+
+<div id="hint"><div class="chip" id="hintText">Tap the net or the cloth to pick one up.</div></div>
+
+<div id="help" hidden>
+  <div class="panel">
+    <div class="bar"><span class="gap"></span><span class="title">Help</span><button class="x">&times;</button></div>
+
+    <h3>Feeding them</h3>
+    <ol>
+      <li>Tap the tub of food on the floor, next to the cloth.</li>
+      <li>Hold it over the tank and <b>shake it side to side</b>.</li>
+      <li>Flakes drop into the water and everything swims over to eat.</li>
+      <li>Food nobody eats sinks and turns into dirt, so don't tip in too much.</li>
+    </ol>
+
+    <h3>When one is poorly</h3>
+    <ol>
+      <li>Tap a creature. Its name comes up on the right, with Health and Hunger.</li>
+      <li>If it says <b>Ill</b> in red, it needs help.</li>
+      <li>Tap and <b>hold</b> it, then drag it out of the tank.</li>
+      <li>Hold it over the <b>white box with the green plus</b>, on the floor to the right.</li>
+      <li>The bar goes red, then yellow, then green. It takes five seconds.</li>
+      <li>Let go over the water to put it back.</li>
+    </ol>
+
+    <p class="note">A hungry creature falls ill much more easily, so keep them fed.</p>
+  </div>
+</div>
+
+<div id="shop" hidden>
+  <div class="panel">
+
+    <!-- the four big tabs -->
+    <div class="screen" id="screenMenu">
+      <div class="bar"><span class="gap"></span><span class="title">Shop</span><button class="x">&times;</button></div>
+      <div class="tabs">
+        <button class="tab" data-go="tanks"    data-label="Tanks"><span class="tabEmoji">&#128998;</span>Tanks</button>
+        <button class="tab" data-go="fish"     data-label="Fish"><span class="tabEmoji">&#128032;</span>Fish</button>
+        <button class="tab wide" data-go="upgrades" data-label="Upgrades"><span class="tabEmoji">&#11088;</span>Upgrades</button>
+      </div>
+    </div>
+
+    <!-- every tab shows its list on this one screen -->
+    <div class="screen" id="screenList" hidden>
+      <div class="bar"><button data-back>&larr;</button><span class="title" id="listTitle">Tanks</span><button class="x">&times;</button></div>
+      <div class="cashLine" id="shopCash">$0</div>
+      <div class="list" id="itemList"></div>
+      <p class="note" id="listNote"></p>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ---------------------------------------------------------------------------
+// The tank is drawn in its own made-up units, 1000 wide and 700 tall, and then
+// scaled to fit whatever screen it is on. That way it looks the same on a
+// phone as it does on a laptop.
+// ---------------------------------------------------------------------------
+const WW = 1000, WH = 700;
+const FLOOR_Y = 606;
+
+// All of these describe the tank you are looking at right now. They change
+// when you equip a different tank, so setGeometry() further down works them out
+// instead of them being written in by hand.
+let TANK;         // the glass box
+let IN;           // inside the glass
+let WATER_TOP;    // top of the water
+let SAND_TOP;     // top of the sand
+let STAND;        // the cupboard it stands on
+let CM;           // how many tank units make 1 real centimetre
+let ROCKS;
+let equipped = 0; // which tank you have set up
+
+const cv = document.getElementById("tank");
+const ctx = cv.getContext("2d");
+let scale = 1, offX = 0, offY = 0, dpr = 1;
+
+function resize() {
+  dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const w = window.innerWidth, h = window.innerHeight;
+  cv.width = Math.round(w * dpr);
+  cv.height = Math.round(h * dpr);
+  scale = Math.min(w / WW, h / WH);
+  offX = (w - WW * scale) / 2;
+  offY = (h - WH * scale) / 2;
+}
+window.addEventListener("resize", resize);
+resize();
+
+const rand = (a, b) => a + Math.random() * (b - a);
+const dist = (ax, ay, bx, by) => Math.hypot(ax - bx, ay - by);
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+
+// --- the tanks -------------------------------------------------------------
+// The first one is the tank you start with. The rest you buy in the shop.
+// w and h are how big the glass box is, cm is how wide it really is, and
+// bottom is where it sits on the cupboard. Bigger tanks grow downwards, not
+// upwards: every tank's top edge lands on 60, which keeps the glass clear of
+// the buttons in the corner. Mould behind a button could never be scrubbed off.
+// Sizes here are in real metres, on purpose. A coral is the same real size in
+// every tank, so it looks smaller and smaller as the tanks get bigger — which
+// is how you can tell at a glance that the big ones really are big.
+const CORAL_0 = 0.5, CORAL_1 = 0.45, CORAL_2 = 0.6, ANEMONE = 0.45, CAVE = 1.3;
+
+const TANKS = [
+  { price: 0,    owned: true,  long: 2,  tall: 1,  shape: "box", rocks: 4,
+    frame: "#1a2732", trim: "#8fa6b6",
+    decor: [] },
+
+  // two kinds of coral, one on each side
+  { price: 250,  owned: false, long: 4,  tall: 1.5, shape: "box", rocks: 3,
+    frame: "#25381f", trim: "#9dc48c",
+    decor: [
+      { kind: "coral", type: 0, at: 0.16, m: CORAL_0 },
+      { kind: "coral", type: 1, at: 0.84, m: CORAL_1 }
+    ] },
+
+  // ...plus a third coral and an anemone
+  { price: 600,  owned: false, long: 5,  tall: 3,  shape: "box", rocks: 3,
+    frame: "#2f2140", trim: "#c3a2d6",
+    decor: [
+      { kind: "coral",   type: 0, at: 0.14, m: CORAL_0 },
+      { kind: "anemone",          at: 0.36, m: ANEMONE },
+      { kind: "coral",   type: 2, at: 0.66, m: CORAL_2 },
+      { kind: "coral",   type: 1, at: 0.86, m: CORAL_1 }
+    ] },
+
+  // ...plus tall kelp down the left
+  { price: 1200, owned: false, long: 6,  tall: 8,  shape: "box", rocks: 3,
+    frame: "#43350f", trim: "#e8c466",
+    decor: [
+      { kind: "kelp",             at: 0.07, m: 5.4 },
+      { kind: "kelp",             at: 0.13, m: 4.6 },
+      { kind: "kelp",             at: 0.19, m: 5.9 },
+      { kind: "coral",   type: 0, at: 0.34, m: CORAL_0 },
+      { kind: "anemone",          at: 0.50, m: ANEMONE },
+      { kind: "coral",   type: 2, at: 0.68, m: CORAL_2 },
+      { kind: "coral",   type: 1, at: 0.88, m: CORAL_1 }
+    ] },
+
+  // ...plus caves you could walk into
+  { price: 2500, owned: false, long: 10, tall: 15, shape: "cylinder", rocks: 2,
+    frame: "#123038", trim: "#7fd8e8",
+    decor: [
+      // a proper kelp forest. The tall ones reach nearly to the surface —
+      // the water is about 11 m deep in here, so 10 m leaves a small gap.
+      { kind: "kelp",             at: 0.07, m: 10.2 },
+      { kind: "kelp",             at: 0.11, m: 9.6 },
+      { kind: "kelp",             at: 0.15, m: 10.4 },
+      { kind: "kelp",             at: 0.19, m: 6.2 },
+      { kind: "kelp",             at: 0.23, m: 9.9 },
+      { kind: "kelp",             at: 0.27, m: 10.3 },
+      { kind: "kelp",             at: 0.31, m: 5.4 },
+      { kind: "kelp",             at: 0.86, m: 9.8 },
+      { kind: "kelp",             at: 0.93, m: 10.1 },
+      { kind: "coral",   type: 0, at: 0.24, m: CORAL_0 },
+      { kind: "cave",             at: 0.34, m: CAVE },
+      { kind: "anemone",          at: 0.45, m: ANEMONE },
+      { kind: "cave",             at: 0.56, m: CAVE },
+      { kind: "coral",   type: 2, at: 0.66, m: CORAL_2 },
+      { kind: "cave",             at: 0.78, m: CAVE },
+      { kind: "coral",   type: 1, at: 0.90, m: CORAL_1 }
+    ] }
+];
+
+const TANK_GROW = [0.72, 0.80, 0.88, 0.94, 1.0];
+
+// The room the tank has to fit inside.
+const BOX = { wide: 820, high: 486, bottom: 546 };
+
+let PPM = 1;          // how many dots make one real metre in this tank
+let FISH_SCALE = 1;   // fish look smaller in a huge tank
+let CYL = false;      // is this tank a cylinder?
+let TALL = false;     // is it taller than it is long?
+
+// Everything the upgrades change. They are worked out in applyUpgrades().
+let NET_R = 34;        // how wide a sweep the net makes
+let CLOTH_R = 30;      // how wide a rub the cloth makes
+let DIRT_GAP = 45;     // seconds between bits of dirt
+let PAY_BONUS = 0;     // extra money on every single clean
+let MAX_WATCHERS = 3;  // how many people can watch at once
+let TICKET = 1;        // what each person pays when they pay
+let CAP = 0;          // how deep the curved top and bottom of a cylinder are
+
+// --- the things you can upgrade --------------------------------------------
+// These do not get "owned" like a tank or a fish. You buy them again and again,
+// and each time they go up a level. Most stop at level 10.
+const UPGRADES = [
+  { id: "cloth",  name: "Bigger cloth", icon: "\u{1F9FD}", max: 10, level: 0, base: 40,
+    what: "The cloth rubs a wider patch of glass." },
+  { id: "net",    name: "Bigger net",   icon: "\u{1F945}", max: 10, level: 0, base: 40,
+    what: "The net sweeps up more of the water at once." },
+  { id: "filter", name: "Filter",       icon: "\u{1F4A7}", max: 10, level: 0, base: 60,
+    what: "Dirt turns up less often, so the water stays clearer." },
+  { id: "pay",    name: "Better pay",   icon: "\u{1F4B5}", max: 5,  level: 0, base: 300,
+    what: "Every single clean pays $5 more. Stops at level 5." }
+];
+
+const PEOPLE = [
+  { id: "seats",   name: "Seats",   icon: "\u{1FA91}", max: 10, level: 0, base: 50,
+    what: "Room for one more person to stand and watch." },
+  { id: "posters", name: "Posters", icon: "\u{1F4E3}", max: 10, level: 0, base: 90,
+    what: "Everyone watching pays $1 more each time." },
+  { id: "cleaner", name: "Cleaner", icon: "\u{1F9F9}", max: 10, level: 0, base: 120,
+    what: "Someone who scoops dirt out for you, even when you don't." },
+  { id: "wiper",   name: "Wiper",   icon: "\u{1FAE7}", max: 10, level: 0, base: 150,
+    what: "Someone who rubs mould down for you, but leaves you the last bit." }
+];
+
+// The People tab is gone from the shop, so its four things live in Upgrades
+// now — otherwise the cleaner, the wiper and the seats could never be bought.
+for (const it of PEOPLE) UPGRADES.push(it);
+
+// What level is one of them on?
+function lvl(id) {
+  for (const it of UPGRADES) if (it.id === id) return it.level;
+  for (const it of PEOPLE)   if (it.id === id) return it.level;
+  return 0;
+}
+
+// Everything an upgrade changes is worked out here, in one place.
+function applyUpgrades() {
+  // The cloth and net are measured against the tank they are being used in.
+  // A fixed-size cloth would be wider than a whole patch of mould on the big
+  // tanks, so the biggest tank would be the easiest one to clean.
+  const wide = IN.x1 - IN.x0;
+  CLOTH_R      = (0.053 + 0.0053 * lvl("cloth")) * wide;
+  NET_R        = (0.060 + 0.0053 * lvl("net")) * wide;
+  DIRT_GAP     = 45 + 8 * lvl("filter");
+  PAY_BONUS    = 5 * lvl("pay");
+  MAX_WATCHERS = 3 + lvl("seats");
+  TICKET       = 1 + lvl("posters");
+}
+
+// The net leans against the right-hand side, so it moves with the tank.
+const NET_REST = { bx: 0, by: 600, tx: 0, ty: 0 };
+
+// Rocks are scattered by a number instead of by chance, so the same tank
+// always has the same rocks in the same places.
+function seeded(a) {
+  return function () {
+    a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+function makeRocks(spec, seed) {
+  const rnd = seeded(seed);
+  const rocks = [];
+  const inset = 50 + (CYL ? (IN.x1 - IN.x0) * 0.20 : 0);
+  const span = (IN.x1 - IN.x0) - inset * 2;
+  for (let i = 0; i < spec.rocks; i++) {
+    const along = (i + 0.5) / spec.rocks;
+    const x = IN.x0 + inset + along * span + (rnd() - 0.5) * span * 0.18;
+    // a rock is 20 to 40 cm across and about half that tall, in every tank
+    rocks.push({
+      x: x,
+      y: sandTopAt(x) + Math.max(2, (0.03 + rnd() * 0.05) * PPM),
+      w: Math.max(5, (0.20 + rnd() * 0.20) * PPM),
+      h: Math.max(3, (0.10 + rnd() * 0.11) * PPM),
+      tone: i % 2
+    });
+  }
+  return rocks;
+}
+
+// The sand is a wavy line, so anything standing on it needs to know how high
+// the sand is at that exact spot.
+function sandTopAt(x) {
+  return SAND_TOP + Math.sin(x * 0.018) * 5 + Math.sin(x * 0.061) * 2.5;
+}
+
+// Work out where everything sits for one of the tanks. Every tank keeps its
+// real shape: a long flat tank stays long and flat, a tall one stays tall.
+function setGeometry(i) {
+  const t = TANKS[i];
+  equipped = i;
+
+  const grow = TANK_GROW[i];
+  PPM = Math.min(BOX.wide * grow / t.long, BOX.high * grow / t.tall);
+  const w = Math.round(t.long * PPM);
+  const h = Math.round(t.tall * PPM);
+
+  const x0 = Math.round(500 - w / 2);
+  TANK = { x0: x0, x1: x0 + w, y0: BOX.bottom - h, y1: BOX.bottom };
+  IN = { x0: TANK.x0 + 12, x1: TANK.x1 - 12, y0: TANK.y0 + 12, y1: TANK.y1 - 12 };
+
+  CYL = t.shape === "cylinder";
+  TALL = t.tall > t.long;                          // which way the ruler goes
+  CAP = CYL ? (IN.x1 - IN.x0) * 0.15 : 0;          // how far the curved ends bulge
+
+  WATER_TOP = IN.y0 + (CYL ? CAP + 10 : 24);
+  // Sand is a share of the tank's height, but never more than about 60 cm deep
+  // — a fraction of a 15 metre tank would be metres of sand.
+  SAND_TOP = IN.y1 - Math.max(26, Math.min(0.6 * PPM, h * 0.14)) - CAP * 0.5;
+  CM = PPM / 100;
+  FISH_SCALE = clamp(Math.pow(PPM / 300, 0.45), 0.36, 1.15);
+  STAND = { x0: TANK.x0 - 24, x1: TANK.x1 + 24, y0: TANK.y1, y1: FLOOR_Y };
+
+  // A tall tank has the ruler running up its right-hand side, so the net has
+  // to lean a bit further over to leave room for it.
+  const standOff = TALL ? 74 : 10;
+  NET_REST.tx = TANK.x1 + standOff;
+  NET_REST.ty = TANK.y0 + 58;
+  NET_REST.bx = TANK.x1 + standOff + 58;
+  NET_REST.by = 600;
+
+  ROCKS = makeRocks(t, i + 1);
+  applyUpgrades();          // the tools are sized against this tank
+}
+
+// The outline of the tank. A box is a box; a cylinder has curved ends.
+function tankPath(c, x0, y0, x1, y1, cap) {
+  if (!cap) {
+    const r = 6;
+    c.beginPath();
+    c.moveTo(x0 + r, y0);
+    c.arcTo(x1, y0, x1, y1, r);
+    c.arcTo(x1, y1, x0, y1, r);
+    c.arcTo(x0, y1, x0, y0, r);
+    c.arcTo(x0, y0, x1, y0, r);
+    c.closePath();
+    return;
+  }
+  const rx = (x1 - x0) / 2;
+  const cx = x0 + rx;
+  c.beginPath();
+  c.moveTo(x0, y0 + cap);
+  c.ellipse(cx, y0 + cap, rx, cap, 0, Math.PI, 0);
+  c.lineTo(x1, y1 - cap);
+  c.ellipse(cx, y1 - cap, rx, cap, 0, 0, Math.PI);
+  c.closePath();
+}
+
+// Is this spot actually inside the glass? Matters for the curved ends, so
+// mould can't grow in the corner of a cylinder where there is no glass.
+function insideTank(x, y) {
+  if (x < IN.x0 || x > IN.x1 || y < IN.y0 || y > IN.y1) return false;
+  if (!CYL) return true;
+  const rx = (IN.x1 - IN.x0) / 2;
+  const cx = IN.x0 + rx;
+  const topY = IN.y0 + CAP;
+  const botY = IN.y1 - CAP;
+  if (y >= topY && y <= botY) return true;
+  const dy = (y < topY ? topY - y : y - botY) / CAP;
+  const dx = (x - cx) / rx;
+  return dx * dx + dy * dy <= 1;
+}
+
+setGeometry(0);
+
+// --- the fish --------------------------------------------------------------
+// Every kind of fish you can keep. You start with goldfish; the rest are
+// bought in the shop. "many" is how many of that kind swim in the tank.
+const FISH_KINDS = [
+  { name: "Goldfish", price: 0, owned: true, equipped: true, many: 3,
+    art: "fish", move: "swim",
+    size: [24, 31], speed: [46, 62], belly: 0.56, stripes: 0,
+    top: "#ffd06a", mid: "#ff8f34", low: "#df5f18",
+    fin: "rgba(255,170,90,.9)", tail: "rgba(255,150,72,.9)" },
+
+  { name: "Clownfish", price: 50, owned: false, equipped: false, many: 10,
+    art: "fish", move: "swim", needsTank: 1,
+    size: [17, 22], speed: [44, 60], belly: 0.6, stripes: 3, stripe: "#fff6ec",
+    top: "#ffb257", mid: "#ff7418", low: "#cf470a",
+    fin: "rgba(255,196,130,.9)", tail: "rgba(255,160,80,.9)" },
+
+  // Live European lobsters really are blue. They only go red when cooked.
+  { name: "European Lobster", price: 150, owned: false, equipped: false, many: 2,
+    art: "lobster", move: "crawl",
+    size: [20, 25], speed: [13, 19],
+    shell: "#3355a0", shellLow: "#1d3468", claw: "#4a6fc0" },
+
+  { name: "Octopus", price: 500, owned: false, equipped: false, many: 1,
+    art: "octopus", move: "drift",
+    size: [25, 29], speed: [15, 23],
+    skin: "#bb5f88", skinLow: "#77305a" },
+
+  { name: "Deadly Lionfish", price: 1000, owned: false, equipped: false, many: 1,
+    art: "fish", move: "swim", spines: true,
+    size: [23, 28], speed: [26, 36], belly: 0.62, stripes: 5, stripe: "#f8efe4",
+    top: "#ea7a50", mid: "#c33c20", low: "#7b2415",
+    fin: "rgba(255,226,208,.72)", tail: "rgba(244,186,156,.78)" }
+];
+
+const fish = [];
+
+function makeFish(k) {
+  return {
+    kind: k,
+    x: rand(IN.x0 + 120, IN.x1 - 120),
+    y: rand(WATER_TOP + 60, SAND_TOP - 40),
+    dir: Math.random() < 0.5 ? 1 : -1,   // 1 = swimming right, -1 = left
+    pitch: rand(-0.35, 0.35),            // tilted up or down, for diagonals
+    wantPitch: 0,
+    speed: rand(k.speed[0], k.speed[1]),
+    size: rand(k.size[0], k.size[1]),
+    phase: rand(0, 6.28),
+    turnIn: rand(1.2, 3.5),              // seconds until it changes its mind
+    hunger: rand(5, 25),                 // 0 is full, 100 is starving
+    ill: false
+  };
+}
+
+// Fill the tank with every kind you own and have put in.
+function rebuildFish() {
+  fish.length = 0;
+  for (const k of FISH_KINDS) {
+    if (!k.owned || !k.equipped) continue;
+    for (let i = 0; i < k.many; i++) fish.push(makeFish(k));
+  }
+}
+rebuildFish();
+
+// --- mould on the front glass ---------------------------------------------
+const mould = [];
+const MOULD_FIRST = 5;      // first patch turns up after 5 seconds
+const MOULD_EVERY = 60;     // then a new one every minute
+const MOULD_GROW  = 20;     // each patch takes 20 seconds to reach full size
+let mouldTimer = MOULD_FIRST;
+
+function addMould() {
+  if (mould.length >= 20) return;
+  // A patch is measured against the tank it grows in, not in fixed
+  // centimetres — a patch that would be a speck on a 10 metre tank is no fun
+  // to scrub, and one sized for the little tank would swallow it whole.
+  const wide = IN.x1 - IN.x0;
+  const r = rand(0.0275, 0.065) * wide;
+  const fits = (x, y) =>
+    insideTank(x, y) &&
+    insideTank(x - r * 0.85, y) && insideTank(x + r * 0.85, y) &&
+    insideTank(x, y - r * 0.85) && insideTank(x, y + r * 0.85);
+
+  let px0 = 0, py0 = 0, tries = 0;
+  do {
+    px0 = rand(IN.x0 + r + 8, IN.x1 - r - 8);
+    py0 = rand(WATER_TOP + r + 8, IN.y1 - r - 8);
+    tries++;
+  } while (!fits(px0, py0) && tries < 40);
+  if (!fits(px0, py0)) return;
+
+  const p = {
+    x: px0,
+    y: py0,
+    r: r,
+    grow: 0,
+    blobs: []
+  };
+  const n = clamp(Math.round(r * r / 34), 7, 42);
+  for (let i = 0; i < n; i++) {
+    const a = rand(0, Math.PI * 2);
+    const d = Math.sqrt(Math.random()) * r;
+    p.blobs.push({
+      dx: Math.cos(a) * d,
+      dy: Math.sin(a) * d * 0.85,
+      r: rand(0.16, 0.34) * r,
+      t: d / r,                            // grows outwards from the middle
+      hue: rand(78, 104),
+      gone: false
+    });
+  }
+  mould.push(p);
+}
+
+// --- dirt floating in the water -------------------------------------------
+const dirt = [];
+let dirtTimer = 20;
+
+function addDirt(n) {
+  for (let i = 0; i < n && dirt.length < 60; i++) {
+    dirt.push({
+      x: rand(IN.x0 + 20, IN.x1 - 20),
+      y: rand(WATER_TOP + 10, SAND_TOP - 60),
+      r: rand(0.0062, 0.0124) * (IN.x1 - IN.x0),
+      vx: rand(-6, 6),
+      spin: rand(0, 6.28),
+      spinV: rand(-1.2, 1.2),
+      settled: false
+    });
+  }
+}
+
+// --- people standing watching the fish ------------------------------------
+let watchers = 1;
+let watcherTimer = rand(20, 40);
+let ticketTimer = 20;
+let cleanerTimer = 0;
+let wiperTimer = 0;
+watchers = 1 + Math.floor(Math.random() * MAX_WATCHERS);
+
+// --- bubbles, just for looks ----------------------------------------------
+const bubbles = [];
+
+// --- money -----------------------------------------------------------------
+let cash = 0;
+const cashPops = [];          // the little "+$7" labels that float up
+
+function pop(x, y, text) {
+  cashPops.push({ x, y, text, life: 1.5 });
+}
+
+// How much a patch of mould is worth depends on how big it grew.
+// The tank is 80 cm across, so these are real centimetres.
+function mouldPay(patch) {
+  // How much of the glass the patch covers. The three bands are the same ones
+  // the little tank always had, just measured in a way that works on any tank.
+  const across = 2 * patch.r / (IN.x1 - IN.x0);
+  if (across < 0.080) return Math.round(rand(1, 5));     // a small patch
+  if (across < 0.105) return Math.round(rand(6, 10));    // a decent one
+  return Math.round(rand(10, 20));                       // a big one
+}
+
+// --- sparkles when you clean something ------------------------------------
+const sparks = [];
+function sparkle(x, y, colour) {
+  for (let i = 0; i < 6; i++) {
+    const a = rand(0, Math.PI * 2);
+    sparks.push({
+      x, y, vx: Math.cos(a) * rand(20, 70), vy: Math.sin(a) * rand(20, 70),
+      life: 1, colour
+    });
+  }
+}
+
+// --- the two tools ---------------------------------------------------------
+// The net leans against the right-hand side of the tank.
+// The cloth sits folded on the floor at the left.
+const CLOTH_REST = { x: 54, y: 646 };   // the net's spot is set with the tank
+const FOOD_REST  = { x: 158, y: 648 };  // the tub of food, next to the cloth
+
+// Dried seaweed flakes. Not made of any creature — no fish, no meat, no
+// insects — so nothing in the tank is eating anything it shouldn't.
+const flakes = [];
+let shakeDir = 0, shakeCount = 0, shakeTimer = 0, sprinkleCool = 0;
+
+let holding = null;               // null, "net", "cloth" or "food"
+let carried = null;               // a creature you have lifted out
+let selected = null;              // the creature whose status is showing
+let cureFill = 0;                 // how far through curing, 0 to 1
+const CURE = { x: 932, y: 652, w: 98, h: 76 };   // the white box, right of the tank
+const CURE_SECONDS = 5;
+let illTimer = rand(30, 60);
+
+function creatureAt(x, y) {
+  for (let i = fish.length - 1; i >= 0; i--) {
+    const f = fish[i];
+    const reach = Math.max(14, f.size * FISH_SCALE * 1.1);
+    if (dist(x, y, f.x, f.y) < reach) return f;
+  }
+  return null;
+}
+function nearCureBox(x, y) {
+  return Math.abs(x - CURE.x) < CURE.w * 0.5 + 34 && Math.abs(y - CURE.y) < CURE.h * 0.5 + 34;
+}
+let px = WW / 2, py = WH / 2;     // where the finger or mouse is
+let pointerDown = false;
+let hasHover = window.matchMedia("(hover: hover)").matches;
+
+function nearNetRest(x, y) {
+  // distance from the point to the leaning handle
+  const dx = NET_REST.tx - NET_REST.bx, dy = NET_REST.ty - NET_REST.by;
+  const t = clamp(((x - NET_REST.bx) * dx + (y - NET_REST.by) * dy) / (dx * dx + dy * dy), 0, 1);
+  return dist(x, y, NET_REST.bx + dx * t, NET_REST.by + dy * t) < 46;
+}
+function nearClothRest(x, y) {
+  return Math.abs(x - CLOTH_REST.x) < 52 && Math.abs(y - CLOTH_REST.y) < 46;
+}
+function nearFoodRest(x, y) {
+  return Math.abs(x - FOOD_REST.x) < 46 && Math.abs(y - FOOD_REST.y) < 46;
+}
+
+function toWorld(e) {
+  const r = cv.getBoundingClientRect();
+  return {
+    x: (e.clientX - r.left - offX) / scale,
+    y: (e.clientY - r.top - offY) / scale
+  };
+}
+
+cv.addEventListener("pointerdown", e => {
+  const p = toWorld(e);
+  px = p.x; py = p.y; pointerDown = true;
+
+  // With empty hands, tapping a creature shows what it is — and holds onto it,
+  // so you can lift a poorly one out to the white box.
+  if (!holding) {
+    const hit = creatureAt(p.x, p.y);
+    if (hit) {
+      selected = hit;
+      carried = hit;
+      try { cv.setPointerCapture(e.pointerId); } catch (err) {}
+      return;
+    }
+    if (insideTank(p.x, p.y)) selected = null;
+  }
+
+  if (nearNetRest(p.x, p.y))        holding = holding === "net" ? null : "net";
+  else if (nearClothRest(p.x, p.y)) holding = holding === "cloth" ? null : "cloth";
+  else if (nearFoodRest(p.x, p.y))  holding = holding === "food" ? null : "food";
+
+  if (holding) clean();
+
+  // keeps the moves coming if a finger slides off the edge; not worth
+  // breaking the tap over if the browser refuses it
+  try { cv.setPointerCapture(e.pointerId); } catch (err) {}
+});
+
+cv.addEventListener("pointermove", e => {
+  const p = toWorld(e);
+  const moved = p.x - px;
+  px = p.x; py = p.y;
+
+  // Shaking the tub means waggling it side to side. Every time the tub
+  // changes direction that counts as one waggle.
+  if (holding === "food" && Math.abs(moved) > 3) {
+    const way = moved > 0 ? 1 : -1;
+    if (shakeDir !== 0 && way !== shakeDir) shakeCount++;
+    shakeDir = way;
+    shakeTimer = 0.8;
+    if (shakeCount >= 2 && sprinkleCool <= 0 && flakes.length < 20 && px > IN.x0 && px < IN.x1) {
+      sprinkleCool = 0.3;
+      for (let i = 0; i < 2; i++) {
+        flakes.push({
+          x: px + rand(-14, 14),
+          y: Math.max(py, WATER_TOP + 4),
+          vx: rand(-5, 5),
+          r: rand(0.006, 0.011) * (IN.x1 - IN.x0),
+          spin: rand(0, 6.3),
+          onSand: 0
+        });
+      }
+    }
+  }
+  // With a mouse the tool follows the pointer. On a touchscreen it follows
+  // your finger while it is held down.
+  if (holding && (hasHover || pointerDown)) clean();
+});
+
+function dropCarried() {
+  if (!carried) return;
+  if (insideTank(px, py) && py > WATER_TOP + 10) {
+    // let go over the water: it swims off from exactly where you dropped it
+    carried.x = clamp(px, IN.x0 + 40, IN.x1 - 40);
+    carried.y = clamp(py, WATER_TOP + 30, SAND_TOP - 18);
+  } else {
+    // Never leave a creature stranded on the carpet — let go anywhere that
+    // isn't water and it goes straight back in by itself.
+    carried.x = rand(IN.x0 + 60, IN.x1 - 60);
+    carried.y = rand(WATER_TOP + 40, SAND_TOP - 30);
+  }
+  carried = null;
+  cureFill = 0;
+}
+cv.addEventListener("pointerup", () => { pointerDown = false; dropCarried(); });
+cv.addEventListener("pointercancel", () => { pointerDown = false; dropCarried(); });
+cv.addEventListener("contextmenu", e => e.preventDefault());
+
+// --- cleaning --------------------------------------------------------------
+function clean() {
+  if (holding === "cloth") {
+    for (let i = mould.length - 1; i >= 0; i--) {
+      const p = mould[i];
+      if (dist(px, py, p.x, p.y) > p.r + CLOTH_R) continue;
+      // Once you start rubbing a patch, the rest of it stops creeping outwards.
+      p.grow = 1;
+      let left = 0;
+      for (const b of p.blobs) {
+        if (b.gone) continue;
+        if (dist(px, py, p.x + b.dx, p.y + b.dy) < CLOTH_R) {
+          b.gone = true;
+          sparkle(p.x + b.dx, p.y + b.dy, "150, 220, 140");
+        } else left++;
+      }
+      if (left === 0) {
+        const pay = mouldPay(p) + PAY_BONUS;
+        cash += pay;
+        pop(p.x, p.y, "+$" + pay);
+        mould.splice(i, 1);
+      }
+    }
+  } else if (holding === "net") {
+    for (let i = dirt.length - 1; i >= 0; i--) {
+      const d = dirt[i];
+      if (dist(px, py, d.x, d.y) < NET_R) {
+        sparkle(d.x, d.y, "255, 235, 170");
+        const pay = (Math.random() < 0.3 ? 2 : 1) + PAY_BONUS;   // dirt is worth 1 or 2
+        cash += pay;
+        pop(d.x, d.y, "+$" + pay);
+        dirt.splice(i, 1);
+      }
+    }
+  }
+}
+
+// --- everything moving -----------------------------------------------------
+function update(dt, time) {
+  // the sea creatures
+  for (const f of fish) {
+    const k = f.kind;
+    let fast = f.speed * FISH_SCALE;
+    const edge = 34 * FISH_SCALE;
+
+    f.hunger = Math.min(100, f.hunger + dt * (100 / 360));   // full to starving in 6 minutes
+
+    if (f === carried) {
+      f.x = px;
+      f.y = py;
+      f.pitch = 0;
+      continue;                                  // it is in your hand, not swimming
+    }
+
+    // If there is food in the water and they are peckish, they all pile in.
+    let chase = null, best = 1e9;
+    if (f.hunger > 18) {
+      for (const fl of flakes) {
+        const d = dist(f.x, f.y, fl.x, fl.y);
+        if (d < best) { best = d; chase = fl; }
+      }
+    }
+    if (chase) {
+      const mouth = f.size * FISH_SCALE * 0.8 + 6;
+      if (best < mouth) {
+        f.hunger = Math.max(0, f.hunger - 30);
+        sparkle(chase.x, chase.y, "180, 230, 140");
+        flakes.splice(flakes.indexOf(chase), 1);
+        chase = null;
+      } else {
+        fast *= 1.9;                                   // a proper swarm
+      }
+    }
+
+    if (k.move === "crawl") {
+      // lobsters walk along the sand and never leave it
+      f.turnIn -= dt;
+      if (f.turnIn <= 0) {
+        f.turnIn = rand(2.5, 6);
+        if (Math.random() < 0.45) f.dir *= -1;
+      }
+      if (chase) f.dir = chase.x >= f.x ? 1 : -1;
+      if (f.x < IN.x0 + 60) f.dir = 1;
+      if (f.x > IN.x1 - 60) f.dir = -1;
+      f.x = clamp(f.x + fast * f.dir * dt, IN.x0 + edge, IN.x1 - edge);
+      f.pitch = 0;
+      f.y = sandTopAt(f.x) - f.size * FISH_SCALE * 0.34;
+      continue;
+    }
+
+    f.turnIn -= dt;
+    if (f.turnIn <= 0) {
+      f.turnIn = k.move === "drift" ? rand(2, 5) : rand(1.2, 3.6);
+      f.wantPitch = rand(-0.45, 0.45);      // a new diagonal to swim along
+      if (Math.random() < 0.35) f.dir *= -1; // and sometimes a whole turn round
+    }
+    if (chase) {
+      f.dir = chase.x >= f.x ? 1 : -1;
+      f.wantPitch = clamp(Math.atan2(chase.y - f.y, Math.max(18, Math.abs(chase.x - f.x))), -0.9, 0.9);
+    }
+    // keep them off the walls, the sand and the surface
+    if (f.x < IN.x0 + 70) f.dir = 1;
+    if (f.x > IN.x1 - 70) f.dir = -1;
+    if (f.y < WATER_TOP + 46) f.wantPitch = Math.abs(f.wantPitch) + 0.12;
+    if (f.y > SAND_TOP - 34)  f.wantPitch = -Math.abs(f.wantPitch) - 0.12;
+
+    f.pitch += (f.wantPitch - f.pitch) * Math.min(1, dt * 2.2);
+    f.x += Math.cos(f.pitch) * fast * f.dir * dt;
+    f.y += Math.sin(f.pitch) * fast * dt;
+    if (k.move === "drift") f.y += Math.sin(time * 1.2 + f.phase) * 8 * dt;
+    f.x = clamp(f.x, IN.x0 + edge, IN.x1 - edge);
+    f.y = clamp(f.y, WATER_TOP + 30 * FISH_SCALE, SAND_TOP - 18 * FISH_SCALE);
+  }
+
+  // mould keeps creeping outwards until each patch is full size
+  for (const p of mould) if (p.grow < 1) p.grow = Math.min(1, p.grow + dt / MOULD_GROW);
+  mouldTimer -= dt;
+  if (mouldTimer <= 0) { addMould(); mouldTimer = MOULD_EVERY; }
+
+  // food sinking, and going off if nobody eats it
+  shakeTimer -= dt;
+  if (shakeTimer <= 0) { shakeCount = 0; shakeDir = 0; }
+  sprinkleCool -= dt;
+  for (let i = flakes.length - 1; i >= 0; i--) {
+    const fl = flakes[i];
+    if (fl.y < sandTopAt(fl.x) - fl.r) {
+      fl.x = clamp(fl.x + fl.vx * dt, IN.x0 + 6, IN.x1 - 6);
+      fl.y += 26 * dt;
+    } else {
+      // left on the sand it turns into dirt, so don't tip in more than they eat
+      fl.onSand += dt;
+      if (fl.onSand > 10) {
+        // most of it just breaks up, but some of it makes a mess
+        if (Math.random() < 0.34) {
+          dirt.push({ x: fl.x, y: sandTopAt(fl.x) + 6, r: fl.r * 1.2,
+                      vx: 0, spin: rand(0, 6.3), spinV: rand(-1, 1), settled: true });
+        }
+        flakes.splice(i, 1);
+      }
+    }
+  }
+
+  // dirt drifts about and slowly sinks
+  dirtTimer -= dt;
+  if (dirtTimer <= 0) { addDirt(Math.random() < 0.25 ? 2 : 1); dirtTimer = DIRT_GAP; }
+  for (const d of dirt) {
+    d.spin += d.spinV * dt;
+    if (!d.settled) {
+      d.x += (d.vx + Math.sin(time * 0.6 + d.y * 0.02) * 5) * dt;
+      d.y += 9 * dt;
+      d.x = clamp(d.x, IN.x0 + d.r, IN.x1 - d.r);
+      if (d.y > SAND_TOP + 6) { d.y = SAND_TOP + 6; d.settled = true; }
+    }
+  }
+
+  // holding a poorly creature over the white box makes it better
+  if (carried && carried.ill && nearCureBox(px, py)) {
+    cureFill = Math.min(1, cureFill + dt / CURE_SECONDS);
+    if (cureFill >= 1) {
+      carried.ill = false;
+      pop(CURE.x, CURE.y - 60, "Better!");
+      sparkle(CURE.x, CURE.y, "150, 240, 160");
+    }
+  } else if (!carried || !carried.ill) {
+    cureFill = 0;
+  }
+
+  // creatures fall ill now and then, and a hungry one is far more likely to
+  illTimer -= dt;
+  if (illTimer <= 0) {
+    illTimer = rand(35, 70);
+    const well = fish.filter(f => !f.ill && f !== carried);
+    if (well.length > 0) {
+      const f = well[Math.floor(Math.random() * well.length)];
+      if (Math.random() < 0.12 + f.hunger / 100 * 0.55) f.ill = true;
+    }
+  }
+
+  // people wander up to the tank and wander off again
+  watcherTimer -= dt;
+  if (watcherTimer <= 0) {
+    watcherTimer = rand(20, 40);
+    let n = 1 + Math.floor(Math.random() * MAX_WATCHERS);
+    if (n === watchers) n = 1 + (watchers % MAX_WATCHERS);   // make sure it changes
+    watchers = n;
+  }
+
+  // everybody watching pays up every 20 seconds
+  ticketTimer -= dt;
+  if (ticketTimer <= 0) {
+    ticketTimer = 20;
+    const paid = watchers * TICKET;
+    cash += paid;
+    pop((IN.x0 + IN.x1) / 2, WATER_TOP + 46, "+$" + paid);
+  }
+
+  // the cleaner scoops a bit of dirt out now and then
+  const cleanerLevel = lvl("cleaner");
+  if (cleanerLevel > 0) {
+    cleanerTimer -= dt;
+    if (cleanerTimer <= 0) {
+      cleanerTimer = 36 - 2.6 * cleanerLevel;
+      if (dirt.length > 0) {
+        const d = dirt.splice(Math.floor(Math.random() * dirt.length), 1)[0];
+        const paid = 1 + PAY_BONUS;
+        cash += paid;
+        sparkle(d.x, d.y, "255, 235, 170");
+        pop(d.x, d.y, "+$" + paid);
+      }
+    }
+  }
+
+  // the wiper rubs the worst patch down, but always leaves the last bit of it
+  // so that finishing it off — and the money for it — is still yours
+  const wiperLevel = lvl("wiper");
+  if (wiperLevel > 0) {
+    wiperTimer -= dt;
+    if (wiperTimer <= 0) {
+      wiperTimer = 45 - 3.5 * wiperLevel;
+      let worst = null, most = 1;
+      for (const p of mould) {
+        let left = 0;
+        for (const b of p.blobs) if (!b.gone && b.t <= p.grow) left++;
+        if (left > most) { most = left; worst = p; }
+      }
+      if (worst) {
+        let togo = Math.min(5, most - 1);
+        for (const b of worst.blobs) {
+          if (togo <= 0) break;
+          if (b.gone || b.t > worst.grow) continue;
+          b.gone = true;
+          sparkle(worst.x + b.dx, worst.y + b.dy, "150, 220, 140");
+          togo--;
+        }
+      }
+    }
+  }
+
+  // bubbles
+  if (Math.random() < dt * 2.2 && bubbles.length < 30) {
+    const from = IN.x0 + (IN.x1 - IN.x0) * 0.72;
+    bubbles.push({ x: rand(from - 20, from + 20), y: SAND_TOP - 6, r: rand(0.0035, 0.0088) * (IN.x1 - IN.x0), wob: rand(0, 6.3) });
+  }
+  for (let i = bubbles.length - 1; i >= 0; i--) {
+    const b = bubbles[i];
+    b.y -= (28 + b.r * 5) * dt;
+    if (b.y < WATER_TOP + 2) bubbles.splice(i, 1);
+  }
+
+  // the floating "+$7" labels
+  for (let i = cashPops.length - 1; i >= 0; i--) {
+    const c = cashPops[i];
+    c.y -= 30 * dt;
+    c.life -= dt;
+    if (c.life <= 0) cashPops.splice(i, 1);
+  }
+
+  // sparkles
+  for (let i = sparks.length - 1; i >= 0; i--) {
+    const s = sparks[i];
+    s.x += s.vx * dt; s.y += s.vy * dt; s.life -= dt * 2.2;
+    if (s.life <= 0) sparks.splice(i, 1);
+  }
+}
+
+// --- drawing ---------------------------------------------------------------
+function roundRect(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+function drawRoom() {
+  const g = ctx.createLinearGradient(0, 0, 0, FLOOR_Y);
+  g.addColorStop(0, "#2f2740");
+  g.addColorStop(1, "#3b3350");
+  ctx.fillStyle = g;
+  ctx.fillRect(-400, -400, WW + 800, FLOOR_Y + 400);
+  ctx.fillStyle = "#4a3b32";
+  ctx.fillRect(-400, FLOOR_Y, WW + 800, WH - FLOOR_Y + 400);
+  ctx.fillStyle = "rgba(0,0,0,.18)";
+  ctx.fillRect(-400, FLOOR_Y, WW + 800, 6);
+}
+
+function drawStand() {
+  const g = ctx.createLinearGradient(0, STAND.y0, 0, STAND.y1);
+  g.addColorStop(0, "#6b4a34");
+  g.addColorStop(1, "#4a3122");
+  ctx.fillStyle = g;
+  roundRect(STAND.x0, STAND.y0, STAND.x1 - STAND.x0, STAND.y1 - STAND.y0, 8);
+  ctx.fill();
+  ctx.fillStyle = "rgba(255,255,255,.07)";
+  ctx.fillRect(STAND.x0, STAND.y0, STAND.x1 - STAND.x0, 7);
+  ctx.strokeStyle = "rgba(0,0,0,.25)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(WW / 2, STAND.y0 + 16); ctx.lineTo(WW / 2, STAND.y1 - 10);
+  ctx.stroke();
+}
+
+function drawWater(time) {
+  // the air above the water
+  ctx.fillStyle = "#0e2d3d";
+  ctx.fillRect(IN.x0, IN.y0, IN.x1 - IN.x0, IN.y1 - IN.y0);
+
+  const g = ctx.createLinearGradient(0, WATER_TOP, 0, IN.y1);
+  g.addColorStop(0, "#3fa9c8");
+  g.addColorStop(0.55, "#1f7fa6");
+  g.addColorStop(1, "#155f80");
+  ctx.fillStyle = g;
+  ctx.fillRect(IN.x0, WATER_TOP, IN.x1 - IN.x0, IN.y1 - WATER_TOP);
+
+  // wobbly surface
+  ctx.strokeStyle = "rgba(200,245,255,.55)";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  for (let x = IN.x0; x <= IN.x1; x += 8) {
+    const y = WATER_TOP + Math.sin(x * 0.035 + time * 1.6) * 2.5;
+    x === IN.x0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+
+  // light coming down through the water
+  ctx.save();
+  ctx.globalAlpha = 0.09;
+  ctx.fillStyle = "#dffaff";
+  for (let i = 0; i < 5; i++) {
+    const x = IN.x0 + 70 + i * (IN.x1 - IN.x0) / 5 + Math.sin(time * 0.5 + i) * 26;
+    ctx.beginPath();
+    ctx.moveTo(x, WATER_TOP);
+    ctx.lineTo(x + 42, WATER_TOP);
+    ctx.lineTo(x + 120, IN.y1);
+    ctx.lineTo(x - 10, IN.y1);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawSand() {
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(IN.x0, IN.y1);
+  ctx.lineTo(IN.x0, SAND_TOP + 6);
+  for (let x = IN.x0; x <= IN.x1; x += 10) ctx.lineTo(x, sandTopAt(x));
+  ctx.lineTo(IN.x1, IN.y1);
+  ctx.closePath();
+  const g = ctx.createLinearGradient(0, SAND_TOP - 8, 0, IN.y1);
+  g.addColorStop(0, "#e8d3a0");
+  g.addColorStop(1, "#b99a67");
+  ctx.fillStyle = g;
+  ctx.fill();
+  ctx.clip();
+  ctx.fillStyle = "rgba(120,95,60,.28)";
+  for (let i = 0; i < 90; i++) {
+    const x = IN.x0 + (i * 137) % (IN.x1 - IN.x0);
+    const y = SAND_TOP + 12 + ((i * 53) % 58);
+    ctx.fillRect(x, y, 2, 2);
+  }
+  ctx.restore();
+}
+
+function drawRocks() {
+  for (const r of ROCKS) {
+    ctx.save();
+    ctx.translate(r.x, r.y);
+    const g = ctx.createLinearGradient(0, -r.h / 2, 0, r.h / 2);
+    if (r.tone === 0) { g.addColorStop(0, "#8d93a0"); g.addColorStop(1, "#4e5563"); }
+    else              { g.addColorStop(0, "#9c8f88"); g.addColorStop(1, "#5b504b"); }
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(-r.w / 2, r.h / 2);
+    ctx.lineTo(-r.w * 0.36, -r.h * 0.34);
+    ctx.lineTo(-r.w * 0.05, -r.h / 2);
+    ctx.lineTo(r.w * 0.33, -r.h * 0.28);
+    ctx.lineTo(r.w / 2, r.h / 2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,.16)";
+    ctx.beginPath();
+    ctx.moveTo(-r.w * 0.36, -r.h * 0.34);
+    ctx.lineTo(-r.w * 0.05, -r.h / 2);
+    ctx.lineTo(r.w * 0.05, -r.h * 0.16);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+// Draws a fish at the middle of wherever you are, facing right. It takes the
+// canvas to draw on, so the shop can use it for the little pictures too.
+function paintFish(c, k, s, wig) {
+  // tail
+  c.save();
+  c.translate(-s * 0.9, 0);
+  c.rotate(wig * 0.4);
+  c.fillStyle = k.tail;
+  c.beginPath();
+  c.moveTo(0, 0);
+  c.quadraticCurveTo(-s * 0.5, -s * 0.6, -s * 0.9, -s * 0.52);
+  c.quadraticCurveTo(-s * 0.5, 0, -s * 0.9, s * 0.52);
+  c.quadraticCurveTo(-s * 0.5, s * 0.6, 0, 0);
+  c.fill();
+  c.restore();
+
+  // top fin
+  c.fillStyle = k.fin;
+  c.beginPath();
+  c.moveTo(s * 0.25, -s * k.belly * 0.8);
+  c.quadraticCurveTo(-s * 0.1, -s * (k.belly + 0.42), -s * 0.5, -s * k.belly * 0.65);
+  c.closePath();
+  c.fill();
+
+  // the lionfish's long spines, which is what makes it deadly
+  if (k.spines) {
+    c.strokeStyle = "rgba(255,235,220,.72)";
+    c.lineCap = "round";
+    c.lineWidth = Math.max(1, s * 0.055);
+    for (let i = -3; i <= 3; i++) {
+      const bx = i * s * 0.22;
+      const len = s * (0.95 - Math.abs(i) * 0.11);
+      c.beginPath();
+      c.moveTo(bx, -s * k.belly * 0.5);
+      c.lineTo(bx + i * s * 0.07, -s * k.belly - len);
+      c.stroke();
+      c.beginPath();
+      c.moveTo(bx, s * k.belly * 0.5);
+      c.lineTo(bx + i * s * 0.07, s * k.belly + len * 0.66);
+      c.stroke();
+    }
+  }
+
+  // body
+  const g = c.createLinearGradient(0, -s * k.belly, 0, s * k.belly);
+  g.addColorStop(0, k.top);
+  g.addColorStop(0.45, k.mid);
+  g.addColorStop(1, k.low);
+  c.fillStyle = g;
+  c.beginPath();
+  c.ellipse(0, 0, s, s * k.belly, 0, 0, Math.PI * 2);
+  c.fill();
+
+  // stripes, kept inside the body so they don't spill over the edge
+  if (k.stripes) {
+    c.save();
+    c.beginPath();
+    c.ellipse(0, 0, s, s * k.belly, 0, 0, Math.PI * 2);
+    c.clip();
+    c.fillStyle = k.stripe;
+    for (let i = 0; i < k.stripes; i++) {
+      c.save();
+      c.translate(-s * 0.5 + i * s * 0.55, 0);
+      c.rotate(-0.14);
+      c.fillRect(-s * 0.11, -s * 1.3, s * 0.22, s * 2.6);
+      c.restore();
+    }
+    c.restore();
+  }
+
+  // side fin
+  c.fillStyle = k.fin;
+  c.save();
+  c.translate(s * 0.05, s * 0.2);
+  c.rotate(wig * 0.3 + 0.4);
+  c.beginPath();
+  c.ellipse(0, s * 0.16, s * 0.3, s * 0.15, 0, 0, Math.PI * 2);
+  c.fill();
+  c.restore();
+
+  // eye
+  c.fillStyle = "#fff";
+  c.beginPath();
+  c.arc(s * 0.58, -s * 0.13, s * 0.16, 0, Math.PI * 2);
+  c.fill();
+  c.fillStyle = "#20140c";
+  c.beginPath();
+  c.arc(s * 0.62, -s * 0.13, s * 0.08, 0, Math.PI * 2);
+  c.fill();
+}
+
+function paintLobster(c, k, s, wig) {
+  // Seen from the side, walking on the sand: tail behind, claws in front,
+  // legs underneath only.
+  for (let i = 0; i < 5; i++) {
+    const t = i / 4;
+    c.fillStyle = i % 2 ? k.shell : k.shellLow;
+    c.beginPath();
+    c.ellipse(-s * 0.22 - t * s * 0.72, -t * t * s * 0.2,
+              s * 0.17, s * (0.27 - t * 0.11), -t * 0.5, 0, Math.PI * 2);
+    c.fill();
+  }
+
+  // tail fan
+  c.save();
+  c.translate(-s * 1.0, -s * 0.2);
+  c.rotate(-0.55);
+  c.fillStyle = k.shellLow;
+  c.beginPath();
+  c.moveTo(0, 0);
+  c.lineTo(-s * 0.32, -s * 0.28);
+  c.lineTo(-s * 0.22, 0);
+  c.lineTo(-s * 0.32, s * 0.28);
+  c.closePath();
+  c.fill();
+  c.restore();
+
+  // walking legs, underneath
+  c.strokeStyle = k.shellLow;
+  c.lineCap = "round";
+  c.lineWidth = Math.max(1.2, s * 0.06);
+  for (let i = 0; i < 4; i++) {
+    const x = -s * 0.16 + i * s * 0.18;
+    const kick = Math.sin(wig * 2 + i * 1.4) * s * 0.08;
+    c.beginPath();
+    c.moveTo(x, s * 0.15);
+    c.quadraticCurveTo(x + s * 0.02, s * 0.34, x - s * 0.06 + kick, s * 0.47);
+    c.stroke();
+  }
+
+  // the shell over its head end
+  const g = c.createLinearGradient(0, -s * 0.35, 0, s * 0.3);
+  g.addColorStop(0, k.claw);
+  g.addColorStop(1, k.shellLow);
+  c.fillStyle = g;
+  c.beginPath();
+  c.ellipse(s * 0.3, -s * 0.02, s * 0.46, s * 0.3, 0, 0, Math.PI * 2);
+  c.fill();
+
+  // the two big claws, held out in front
+  for (const side of [1, -1]) {
+    c.save();
+    c.translate(s * 0.62, side > 0 ? -s * 0.11 : s * 0.13);
+    c.rotate(side * 0.12 + Math.sin(wig * 1.4) * 0.06);
+    c.strokeStyle = k.shell;
+    c.lineWidth = Math.max(1.5, s * 0.09);
+    c.beginPath();
+    c.moveTo(0, 0);
+    c.lineTo(s * 0.22, 0);
+    c.stroke();
+    c.fillStyle = k.claw;
+    c.beginPath();
+    c.ellipse(s * 0.42, 0, s * 0.24, s * 0.14, 0, 0, Math.PI * 2);
+    c.fill();
+    c.fillStyle = "rgba(8,18,38,.5)";
+    c.beginPath();
+    c.moveTo(s * 0.5, 0);
+    c.lineTo(s * 0.68, -s * 0.085);
+    c.lineTo(s * 0.68, s * 0.085);
+    c.closePath();
+    c.fill();
+    c.restore();
+  }
+
+  // feelers
+  c.strokeStyle = k.claw;
+  c.lineWidth = Math.max(1, s * 0.035);
+  for (const side of [-1, 1]) {
+    c.beginPath();
+    c.moveTo(s * 0.6, -s * 0.16);
+    c.quadraticCurveTo(s * 1.1, -s * 0.3 + side * s * 0.15 + Math.sin(wig) * s * 0.06,
+                       s * 1.45, -s * 0.1 + side * s * 0.2);
+    c.stroke();
+  }
+
+  // eye
+  c.fillStyle = "#0d1826";
+  c.beginPath();
+  c.arc(s * 0.55, -s * 0.17, s * 0.07, 0, Math.PI * 2);
+  c.fill();
+}
+
+function paintOctopus(c, k, s, wig) {
+  // eight arms, drawn first so they sit behind the head
+  c.strokeStyle = k.skinLow;
+  c.lineCap = "round";
+  c.lineWidth = Math.max(1.5, s * 0.13);
+  for (let i = 0; i < 8; i++) {
+    const spread = (i / 7 - 0.5) * 1.8;
+    const wave = Math.sin(wig * 1.4 + i * 0.8) * 0.32;
+    c.beginPath();
+    c.moveTo(0, s * 0.18);
+    c.quadraticCurveTo(Math.sin(spread) * s * 0.6, s * 0.72,
+                       Math.sin(spread + wave) * s * 0.98,
+                       s * 0.92 + Math.cos(spread) * s * 0.22);
+    c.stroke();
+  }
+
+  // head
+  const g = c.createLinearGradient(0, -s * 0.85, 0, s * 0.4);
+  g.addColorStop(0, k.skin);
+  g.addColorStop(1, k.skinLow);
+  c.fillStyle = g;
+  c.beginPath();
+  c.ellipse(0, -s * 0.1, s * 0.62, s * 0.74, 0, 0, Math.PI * 2);
+  c.fill();
+
+  // eyes
+  c.fillStyle = "#fff";
+  c.beginPath(); c.ellipse(-s * 0.27, -s * 0.12, s * 0.18, s * 0.15, 0, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.ellipse(s * 0.27, -s * 0.12, s * 0.18, s * 0.15, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = "#190d14";
+  c.beginPath(); c.ellipse(-s * 0.27, -s * 0.1, s * 0.075, s * 0.1, 0, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.ellipse(s * 0.27, -s * 0.1, s * 0.075, s * 0.1, 0, 0, Math.PI * 2); c.fill();
+}
+
+// Draws whichever kind of creature this is, and marks it if it is poorly.
+function paintCreature(c, k, s, wig, ill) {
+  if (k.art === "lobster") paintLobster(c, k, s, wig);
+  else if (k.art === "octopus") paintOctopus(c, k, s, wig);
+  else paintFish(c, k, s, wig);
+
+  if (ill) {
+    c.fillStyle = "rgba(190, 235, 170, .55)";
+    for (let i = 0; i < 4; i++) {
+      c.beginPath();
+      c.arc(-s * 0.4 + i * s * 0.3, Math.sin(i * 2) * s * 0.2, s * 0.11, 0, Math.PI * 2);
+      c.fill();
+    }
+  }
+}
+
+function drawFish(f, time) {
+  const k = f.kind;
+  const wig = Math.sin(time * (k.art === "fish" ? 7 : 3) + f.phase);
+  ctx.save();
+  ctx.translate(f.x, f.y);
+  if (k.art === "octopus") {
+    ctx.scale(f.dir, 1);              // an octopus stays the right way up
+  } else {
+    ctx.rotate(f.dir === 1 ? f.pitch : -f.pitch);
+    ctx.scale(f.dir, 1);
+  }
+  paintCreature(ctx, k, f.size * FISH_SCALE, wig, f.ill);
+  ctx.restore();
+}
+
+function drawDirt() {
+  for (const d of dirt) {
+    ctx.save();
+    ctx.translate(d.x, d.y);
+    ctx.rotate(d.spin);
+    ctx.fillStyle = "rgba(94,72,44,.85)";
+    ctx.beginPath();
+    ctx.ellipse(0, 0, d.r, d.r * 0.65, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "rgba(150,124,84,.7)";
+    ctx.beginPath();
+    ctx.ellipse(-d.r * 0.25, -d.r * 0.2, d.r * 0.35, d.r * 0.24, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+function drawBubbles() {
+  ctx.strokeStyle = "rgba(230,250,255,.7)";
+  ctx.lineWidth = 1.5;
+  for (const b of bubbles) {
+    const x = b.x + Math.sin(b.y * 0.05 + b.wob) * 6;
+    ctx.beginPath();
+    ctx.arc(x, b.y, b.r, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+}
+
+// Mould sits on the front glass, so it is drawn over the top of the water.
+function drawMould() {
+  for (const p of mould) {
+    for (const b of p.blobs) {
+      if (b.gone || b.t > p.grow) continue;
+      const x = p.x + b.dx, y = p.y + b.dy;
+      ctx.fillStyle = "hsla(" + b.hue + ", 45%, 40%, 0.20)";
+      ctx.beginPath();
+      ctx.arc(x, y, b.r * 1.7, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "hsla(" + b.hue + ", 48%, 36%, 0.55)";
+      ctx.beginPath();
+      ctx.arc(x, y, b.r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "hsla(" + b.hue + ", 55%, 62%, 0.35)";
+      ctx.beginPath();
+      ctx.arc(x - b.r * 0.28, y - b.r * 0.3, b.r * 0.38, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+}
+
+// --- the things standing in the tank ---------------------------------------
+// Every tank has its own list. Sizes are given in real metres and turned into
+// dots here, so a child-sized cave really is child-sized next to the fish.
+function drawDecor(time) {
+  const list = TANKS[equipped].decor;
+  const wide = IN.x1 - IN.x0;
+  for (let i = 0; i < list.length; i++) {
+    const d = list[i];
+    const x = IN.x0 + d.at * wide;
+    const base = sandTopAt(x) + 6;
+    const size = d.m * PPM;
+    if (d.kind === "coral")        drawCoral(x, base, size, d.type, time, i);
+    else if (d.kind === "anemone") drawAnemone(x, base, size, time);
+    else if (d.kind === "kelp")    drawKelp(x, base, size, time, i);
+    else if (d.kind === "cave")    drawCave(x, base, size);
+  }
+}
+
+function drawCoral(x, base, size, type, time, seed) {
+  ctx.save();
+  ctx.translate(x, base);
+  const sway = Math.sin(time * 0.7 + seed * 1.7) * 0.05;
+
+  if (type === 0) {
+    // branching coral, like little antlers
+    ctx.lineCap = "round";
+    for (let b = -2; b <= 2; b++) {
+      const lean = b * 0.3 + sway;
+      const high = size * (0.62 + 0.17 * (2 - Math.abs(b)));
+      ctx.strokeStyle = "#e8748f";
+      ctx.lineWidth = Math.max(2, size * 0.12);
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.quadraticCurveTo(Math.sin(lean) * size * 0.3, -high * 0.55,
+                           Math.sin(lean) * size * 0.62, -high);
+      ctx.stroke();
+      ctx.fillStyle = "#ffc2d2";
+      ctx.beginPath();
+      ctx.arc(Math.sin(lean) * size * 0.62, -high, Math.max(1.6, size * 0.075), 0, Math.PI * 2);
+      ctx.fill();
+    }
+  } else if (type === 1) {
+    // brain coral, a knobbly dome
+    const g = ctx.createLinearGradient(0, -size * 0.8, 0, 0);
+    g.addColorStop(0, "#f2b972");
+    g.addColorStop(1, "#b0692c");
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.ellipse(0, -size * 0.36, size * 0.62, size * 0.44, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.save();
+    ctx.beginPath();
+    ctx.ellipse(0, -size * 0.36, size * 0.62, size * 0.44, 0, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.strokeStyle = "rgba(120,62,20,.45)";
+    ctx.lineWidth = Math.max(1.2, size * 0.05);
+    for (let i = -2; i <= 2; i++) {
+      ctx.beginPath();
+      for (let t = -1; t <= 1.01; t += 0.2) {
+        const px = t * size * 0.7;
+        const py = -size * 0.36 + i * size * 0.17 + Math.sin(t * 4 + i) * size * 0.05;
+        t === -1 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+      }
+      ctx.stroke();
+    }
+    ctx.restore();
+  } else {
+    // fan coral, a flat purple fan
+    ctx.rotate(sway);
+    ctx.fillStyle = "#9b6fd0";
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.quadraticCurveTo(-size * 0.55, -size * 0.45, -size * 0.45, -size * 0.95);
+    ctx.quadraticCurveTo(0, -size * 1.14, size * 0.45, -size * 0.95);
+    ctx.quadraticCurveTo(size * 0.55, -size * 0.45, 0, 0);
+    ctx.fill();
+    ctx.strokeStyle = "rgba(58,28,92,.35)";
+    ctx.lineWidth = Math.max(1, size * 0.03);
+    for (let i = -2; i <= 2; i++) {
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.quadraticCurveTo(i * size * 0.2, -size * 0.5, i * size * 0.22, -size * 0.9);
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
+
+function drawAnemone(x, base, size, time) {
+  ctx.save();
+  ctx.translate(x, base);
+  ctx.fillStyle = "#b95d80";
+  ctx.beginPath();
+  ctx.ellipse(0, -size * 0.15, size * 0.3, size * 0.2, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.lineCap = "round";
+  const n = 15;
+  for (let i = 0; i < n; i++) {
+    const a = -1.35 + (i / (n - 1)) * 2.7;
+    const wave = Math.sin(time * 2 + i * 0.7) * 0.22;
+    ctx.strokeStyle = i % 3 === 0 ? "#ffd6e2" : "#f29ab8";
+    ctx.lineWidth = Math.max(1.5, size * 0.07);
+    ctx.beginPath();
+    ctx.moveTo(0, -size * 0.22);
+    ctx.quadraticCurveTo(Math.sin(a) * size * 0.35, -size * 0.6,
+                         Math.sin(a + wave) * size * 0.62,
+                         -size * 0.78 - Math.cos(a) * size * 0.14);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawKelp(x, base, high, time, seed) {
+  ctx.save();
+  ctx.translate(x, base);
+  ctx.lineCap = "round";
+  for (let k = 0; k < 3; k++) {
+    const off = (k - 1) * high * 0.045;
+    const h = high * (0.8 + 0.1 * ((k + seed) % 3));
+    const bendAt = t => Math.sin(t * 2.6 + time * 0.8 + k + seed) * high * 0.05 * t;
+
+    ctx.strokeStyle = k % 2 ? "#3f8f4a" : "#2c7238";
+    ctx.lineWidth = Math.max(2, high * 0.018);
+    ctx.beginPath();
+    ctx.moveTo(off, 0);
+    for (let t = 0.05; t <= 1.001; t += 0.05) ctx.lineTo(off + bendAt(t), -h * t);
+    ctx.stroke();
+
+    ctx.fillStyle = k % 2 ? "rgba(96,176,96,.85)" : "rgba(72,152,78,.85)";
+    let leaf = 0;
+    for (let t = 0.16; t < 1; t += 0.15) {
+      const side = leaf++ % 2 ? 1 : -1;
+      ctx.save();
+      ctx.translate(off + bendAt(t), -h * t);
+      ctx.rotate(side * 0.7);
+      ctx.beginPath();
+      ctx.ellipse(side * high * 0.03, 0, high * 0.036, high * 0.012, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+  ctx.restore();
+}
+
+function drawCave(x, base, size) {
+  ctx.save();
+  ctx.translate(x, base);
+  const w = size * 1.45;
+
+  const g = ctx.createLinearGradient(0, -size, 0, 0);
+  g.addColorStop(0, "#828a99");
+  g.addColorStop(1, "#414854");
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.moveTo(-w / 2, 4);
+  ctx.quadraticCurveTo(-w * 0.46, -size * 0.95, 0, -size);
+  ctx.quadraticCurveTo(w * 0.46, -size * 0.95, w / 2, 4);
+  ctx.closePath();
+  ctx.fill();
+
+  // the dark way in, big enough for a child to walk into
+  ctx.fillStyle = "#07131b";
+  ctx.beginPath();
+  ctx.ellipse(0, -size * 0.36, size * 0.3, size * 0.34, 0, Math.PI, 0);
+  ctx.lineTo(size * 0.3, 4);
+  ctx.lineTo(-size * 0.3, 4);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = "rgba(255,255,255,.12)";
+  ctx.beginPath();
+  ctx.ellipse(-w * 0.24, -size * 0.62, size * 0.16, size * 0.09, -0.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawGlass(time) {
+  const t = TANKS[equipped];
+
+  ctx.strokeStyle = t.frame;
+  ctx.lineWidth = 12;
+  tankPath(ctx, TANK.x0 + 6, TANK.y0 + 6, TANK.x1 - 6, TANK.y1 - 6, CAP * 0.94);
+  ctx.stroke();
+
+  ctx.strokeStyle = t.trim;
+  ctx.lineWidth = 2;
+  tankPath(ctx, IN.x0, IN.y0, IN.x1, IN.y1, CAP);
+  ctx.stroke();
+
+  // reflection on the glass
+  ctx.save();
+  tankPath(ctx, IN.x0, IN.y0, IN.x1, IN.y1, CAP);
+  ctx.clip();
+  ctx.globalAlpha = 0.07;
+  ctx.fillStyle = "#ffffff";
+  ctx.beginPath();
+  ctx.moveTo(IN.x0 + 60, IN.y1);
+  ctx.lineTo(IN.x0 + 240, IN.y0);
+  ctx.lineTo(IN.x0 + 330, IN.y0);
+  ctx.lineTo(IN.x0 + 150, IN.y1);
+  ctx.fill();
+  ctx.restore();
+}
+
+// --- the ruler -------------------------------------------------------------
+// Wide tanks get it lying along the top, tall tanks get it standing up the
+// right-hand side. Either way it counts real metres.
+function drawRuler() {
+  const t = TANKS[equipped];
+  const metres = TALL ? t.tall : t.long;
+  const every = PPM >= 40 ? 1 : 5;      // don't cram labels onto a huge tank
+
+  ctx.strokeStyle = "rgba(226,240,255,.55)";
+  ctx.fillStyle = "rgba(226,240,255,.8)";
+  ctx.lineWidth = 2;
+  ctx.font = "600 13px ui-rounded, 'Avenir Next', system-ui, sans-serif";
+
+  if (!TALL) {
+    const y = TANK.y0 - 20;
+    ctx.beginPath();
+    ctx.moveTo(TANK.x0, y);
+    ctx.lineTo(TANK.x1, y);
+    ctx.stroke();
+
+    ctx.textAlign = "center";
+    for (let m = 0; m <= metres + 0.001; m++) {
+      const x = TANK.x0 + m * PPM;
+      const big = m % every === 0;
+      ctx.beginPath();
+      ctx.moveTo(x, y - (big ? 7 : 4));
+      ctx.lineTo(x, y + (big ? 7 : 4));
+      ctx.stroke();
+      if (m > 0 && big) ctx.fillText(m + " m", x, y - 12);
+    }
+    // the last bit of a tank that isn't a whole number of metres
+    if (metres % 1 !== 0) {
+      const x = TANK.x1;
+      ctx.beginPath();
+      ctx.moveTo(x, y - 7);
+      ctx.lineTo(x, y + 7);
+      ctx.stroke();
+      ctx.fillText(metres + " m", x, y - 12);
+    }
+    ctx.textAlign = "left";
+  } else {
+    const x = TANK.x1 + 16;
+    ctx.beginPath();
+    ctx.moveTo(x, TANK.y0);
+    ctx.lineTo(x, TANK.y1);
+    ctx.stroke();
+
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    for (let m = 0; m <= metres + 0.001; m++) {
+      const y = TANK.y1 - m * PPM;        // counting up from the sand
+      const big = m % every === 0;
+      ctx.beginPath();
+      ctx.moveTo(x - (big ? 7 : 4), y);
+      ctx.lineTo(x + (big ? 7 : 4), y);
+      ctx.stroke();
+      if (m > 0 && big) ctx.fillText(m + " m", x + 11, y);
+    }
+    ctx.textBaseline = "alphabetic";
+  }
+}
+
+function drawNet(x, y, angle, len, held) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(angle);
+  // handle goes down from the hoop
+  ctx.strokeStyle = "#2f4f63";
+  ctx.lineWidth = 9;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(0, 12);
+  ctx.lineTo(0, len);
+  ctx.stroke();
+  ctx.strokeStyle = "rgba(255,255,255,.2)";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(-2, 20); ctx.lineTo(-2, len - 8);
+  ctx.stroke();
+  // the netting
+  ctx.fillStyle = held ? "rgba(220,255,240,.4)" : "rgba(210,240,235,.3)";
+  ctx.beginPath();
+  ctx.ellipse(0, -6, NET_R, NET_R * 0.92, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "rgba(255,255,255,.55)";
+  ctx.lineWidth = 1.4;
+  const gap = NET_R / 2.6;             // the mesh grows with the hoop
+  for (let i = -2; i <= 2; i++) {
+    const x = i * gap;
+    const half = Math.sqrt(Math.max(0, NET_R * NET_R - x * x)) * 0.9;
+    ctx.beginPath();
+    ctx.moveTo(x, -6 - half);
+    ctx.lineTo(x, -6 + half);
+    ctx.stroke();
+  }
+  // hoop
+  ctx.strokeStyle = "#95a9b8";
+  ctx.lineWidth = 5;
+  ctx.beginPath();
+  ctx.ellipse(0, -6, NET_R, NET_R * 0.92, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawFlakes() {
+  for (const fl of flakes) {
+    ctx.save();
+    ctx.translate(fl.x, fl.y);
+    ctx.rotate(fl.spin);
+    ctx.fillStyle = "rgba(126,172,78,.92)";
+    ctx.fillRect(-fl.r, -fl.r * 0.55, fl.r * 2, fl.r * 1.1);
+    ctx.restore();
+  }
+}
+
+function drawFood(x, y, held, time) {
+  ctx.save();
+  ctx.translate(x, y);
+  if (held) ctx.rotate(Math.sin(time * 18) * (shakeCount >= 2 ? 0.24 : 0.05));
+  const w = 46, h = 52;
+
+  ctx.fillStyle = "rgba(0,0,0,.22)";
+  roundRect(-w / 2 + 3, -h / 2 + 5, w, h, 8);
+  ctx.fill();
+
+  const g = ctx.createLinearGradient(0, -h / 2, 0, h / 2);
+  g.addColorStop(0, "#5fa86e");
+  g.addColorStop(1, "#2c6642");
+  ctx.fillStyle = g;
+  roundRect(-w / 2, -h / 2, w, h, 8);
+  ctx.fill();
+
+  ctx.fillStyle = "#dcead0";
+  roundRect(-w / 2 - 3, -h / 2 - 9, w + 6, 12, 5);
+  ctx.fill();
+  ctx.fillStyle = "rgba(60,92,60,.6)";
+  for (let i = -1; i <= 1; i++) {
+    ctx.beginPath();
+    ctx.arc(i * 11, -h / 2 - 3, 2.2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.fillStyle = "rgba(255,255,255,.88)";
+  roundRect(-w / 2 + 6, -7, w - 12, 20, 4);
+  ctx.fill();
+  ctx.fillStyle = "#3f7a52";
+  for (let i = 0; i < 6; i++) ctx.fillRect(-w / 2 + 11 + (i % 3) * 8, -3 + Math.floor(i / 3) * 8, 5, 3.5);
+  ctx.restore();
+}
+
+// The white first-aid box on the floor, to the right of the tank.
+function drawCureBox() {
+  ctx.fillStyle = "rgba(0,0,0,.28)";
+  roundRect(CURE.x - CURE.w / 2 + 4, CURE.y - CURE.h / 2 + 6, CURE.w, CURE.h, 12);
+  ctx.fill();
+
+  const g = ctx.createLinearGradient(0, CURE.y - CURE.h / 2, 0, CURE.y + CURE.h / 2);
+  g.addColorStop(0, "#ffffff");
+  g.addColorStop(1, "#dde5ee");
+  ctx.fillStyle = g;
+  roundRect(CURE.x - CURE.w / 2, CURE.y - CURE.h / 2, CURE.w, CURE.h, 12);
+  ctx.fill();
+
+  // the bright green plus
+  ctx.fillStyle = "#1fc55e";
+  const thick = 15, long = 50;
+  ctx.fillRect(CURE.x - long / 2, CURE.y - thick / 2, long, thick);
+  ctx.fillRect(CURE.x - thick / 2, CURE.y - long / 2, thick, long);
+
+  // the bar, while you are holding a poorly creature
+  if (carried && carried.ill) {
+    const bw = 116, bh = 15, by = CURE.y - CURE.h / 2 - 28;
+    const colour = cureFill < 0.4 ? "#e5484d" : cureFill < 0.8 ? "#f5c518" : "#25d366";
+    ctx.globalAlpha = 0.3;
+    ctx.fillStyle = colour;
+    roundRect(CURE.x - bw / 2, by, bw, bh, 7);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = colour;
+    roundRect(CURE.x - bw / 2, by, Math.max(10, bw * cureFill), bh, 7);
+    ctx.fill();
+  }
+}
+
+function drawCloth(x, y, held) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(held ? -0.15 : 0.08);
+  const w = held ? CLOTH_R * 2 : 84, h = held ? CLOTH_R * 1.7 : 44;
+  ctx.fillStyle = "rgba(0,0,0,.22)";
+  roundRect(-w / 2 + 4, -h / 2 + 6, w, h, 9);
+  ctx.fill();
+  const g = ctx.createLinearGradient(0, -h / 2, 0, h / 2);
+  g.addColorStop(0, "#8fe3d6");
+  g.addColorStop(1, "#4bb3a6");
+  ctx.fillStyle = g;
+  roundRect(-w / 2, -h / 2, w, h, 9);
+  ctx.fill();
+  ctx.strokeStyle = "rgba(255,255,255,.45)";
+  ctx.lineWidth = 2;
+  roundRect(-w / 2 + 5, -h / 2 + 5, w - 10, h - 10, 6);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawSparks() {
+  for (const s of sparks) {
+    ctx.fillStyle = "rgba(" + s.colour + "," + Math.max(0, s.life) + ")";
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, 3 * s.life + 1, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function drawCashPops() {
+  ctx.textAlign = "center";
+  ctx.font = "bold 23px ui-rounded, 'Avenir Next', system-ui, sans-serif";
+  for (const c of cashPops) {
+    const a = Math.min(1, c.life);
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = "rgba(20, 30, 20, " + (a * 0.6) + ")";
+    ctx.strokeText(c.text, c.x, c.y);
+    ctx.fillStyle = "rgba(255, 226, 122, " + a + ")";
+    ctx.fillText(c.text, c.x, c.y);
+  }
+  ctx.textAlign = "left";
+}
+
+// --- the words at the top and bottom --------------------------------------
+const elHolding = document.getElementById("holding");
+const elMess = document.getElementById("mess");
+const elHint = document.getElementById("hintText");
+const elWatchers = document.getElementById("watchers");
+const elCash = document.getElementById("cash");
+const statusEl = document.getElementById("status");
+const statNameEl = document.getElementById("statName");
+const statHealthLabel = document.getElementById("statHealthLabel");
+const statHealthBar = document.getElementById("statHealthBar");
+const statHungerBar = document.getElementById("statHungerBar");
+
+function updateWords() {
+  elHolding.textContent =
+    holding === "net" ? "Holding the net" :
+    holding === "cloth" ? "Holding the cloth" : "Empty hands";
+
+  const m = mould.length, d = dirt.length;
+  elMess.textContent = (m === 0 && d === 0)
+    ? "The tank is clean"
+    : m + (m === 1 ? " mouldy patch" : " mouldy patches") + "  ·  " +
+      d + (d === 1 ? " bit of dirt" : " bits of dirt");
+
+  elCash.textContent = "\u{1F4B0} $" + cash;
+
+  elWatchers.textContent = watchers === 1
+    ? "\u{1F440} 1 person watching"
+    : "\u{1F440} " + watchers + " people watching";
+
+  // the box on the right showing what you tapped
+  if (selected && fish.indexOf(selected) === -1) selected = null;
+  statusEl.hidden = !selected;
+  if (selected) {
+    statNameEl.textContent = selected.kind.name;
+    statHealthLabel.textContent = selected.ill ? "Ill" : "Health";
+    statHealthLabel.classList.toggle("ill", selected.ill);
+    statHealthBar.style.width = (selected.ill ? Math.round(cureFill * 100) : 100) + "%";
+    statHealthBar.style.background = !selected.ill ? "#25d366"
+      : cureFill < 0.4 ? "#e5484d" : cureFill < 0.8 ? "#f5c518" : "#25d366";
+    statHungerBar.style.width = Math.round(selected.hunger) + "%";
+    statHungerBar.style.background =
+      selected.hunger < 40 ? "#25d366" : selected.hunger < 75 ? "#f5c518" : "#e5484d";
+  }
+
+  elHint.textContent =
+    carried && carried.ill ? "Hold it over the white box with the green plus until the bar turns green." :
+    carried             ? "Let go over the water to put it back." :
+    holding === "net"   ? "Sweep the net over the dirt in the water. Tap the right side to put it back." :
+    holding === "cloth" ? "Rub the cloth over the green mould on the glass. Tap the floor to put it down." :
+    holding === "food"  ? "Shake it side to side over the tank to sprinkle food in." :
+                          "Tap a creature to see how it is. Or pick up the net, the cloth or the food.";
+}
+
+// --- the shop --------------------------------------------------------------
+// Every tab works exactly the same way: a list of things, you buy the next one
+// along, and once you own something you can equip it. The only difference
+// between the tabs is what is in the list.
+
+// Swapping to another tank you own. The old one gets emptied out and the
+// fish move across with you.
+function equipTank(i) {
+  setGeometry(i);
+  mould.length = 0;
+  dirt.length = 0;
+  cashPops.length = 0;
+  sparks.length = 0;
+  bubbles.length = 0;
+  mouldTimer = MOULD_FIRST;
+  dirtTimer = 20;
+  holding = null;
+  for (const f of fish) {
+    f.x = clamp(f.x, IN.x0 + 60, IN.x1 - 60);
+    f.y = clamp(f.y, WATER_TOP + 40, SAND_TOP - 30);
+  }
+}
+
+// --- the little pictures in the list ---
+function lockedPic() {
+  return '<div class="mini locked"><div class="lock"><div class="shackle"></div><div class="body"></div></div></div>';
+}
+
+function tankPic(t) {
+  // same shape as the real thing: long ones look long, tall ones look tall
+  const ppm = Math.min(104 / t.long, 76 / t.tall);
+  const w = Math.round(t.long * ppm);
+  const h = Math.round(t.tall * ppm);
+  const corners = t.shape === "cylinder" ? "50% / 16%" : "5px";
+  return '<div class="minibox">' +
+           '<div class="mini tank" style="width:' + w + 'px; height:' + h +
+             'px; border-color:' + t.frame + '; border-radius:' + corners + '">' +
+             '<div class="sand"></div><div class="fish"></div>' +
+           '</div>' +
+         '</div>';
+}
+
+// A real picture of the fish, drawn once with the same code that draws it
+// swimming about, then kept so it isn't drawn again every time.
+function fishPic(k) {
+  if (!k.thumb) {
+    const c = document.createElement("canvas");
+    c.width = 216;
+    c.height = 140;
+    const g = c.getContext("2d");
+    g.scale(2, 2);
+    g.translate(62, 35);
+    paintCreature(g, k, 27, 0, false);
+    k.thumb = c.toDataURL();
+  }
+  return '<img class="mini pic" src="' + k.thumb + '" alt="">';
+}
+
+// --- what is in each tab ---
+const TABS = {
+  tanks: {
+    title: "Tanks",
+    items: TANKS,
+    pic: tankPic,
+    only: true,                                  // only one tank at a time
+    note: "You can only buy the next tank along.",
+    isOn: i => i === equipped,
+    on: i => equipTank(i)
+  },
+  fish: {
+    title: "Fish",
+    items: FISH_KINDS,
+    pic: fishPic,
+    only: false,                                 // keep as many kinds as you like
+    note: "You can only buy the next fish along, but you can keep as many kinds at once as you like.",
+    isOn: i => FISH_KINDS[i].equipped,
+    on: i => { FISH_KINDS[i].equipped = true; rebuildFish(); },
+    off: i => { FISH_KINDS[i].equipped = false; rebuildFish(); }
+  },
+  upgrades: {
+    title: "Upgrades",
+    items: UPGRADES,
+    levels: true,                                // bought again and again
+    note: "Buy the same one again to take it up another level. Everyone watching pays up every 20 seconds."
+  },
+};
+
+const itemListEl  = document.getElementById("itemList");
+const listNoteEl  = document.getElementById("listNote");
+const listTitleEl = document.getElementById("listTitle");
+const shopCashEl  = document.getElementById("shopCash");
+let openTab = "tanks";
+
+function button(act, key, i, label, cls) {
+  return '<button class="' + cls + '" data-act="' + act +
+         '" data-tab="' + key + '" data-i="' + i + '">' + label + '</button>';
+}
+
+// A row for something with levels: you buy it over and over to make it better.
+function levelRow(it, key, i) {
+  const maxed = it.level >= it.max;
+  const price = it.base * (it.level + 1);
+  const canAfford = cash >= price;
+
+  return '<div class="row' + (it.level > 0 ? " owned" : "") + '">' +
+    '<div class="mini icon">' + it.icon + '</div>' +
+    '<div class="words">' +
+      '<div class="state">' + it.name + '</div>' +
+      '<div class="what">' + it.what + '</div>' +
+      (maxed
+        ? '<div class="equipped">Level ' + it.max + ' &middot; fully upgraded</div>'
+        : '<div class="price">Level ' + it.level + ' of ' + it.max + ' &middot; $' + price + '</div>' +
+          '<button class="buy" data-act="level" data-tab="' + key + '" data-i="' + i + '"' +
+          (canAfford ? "" : " disabled") + '>' +
+          (canAfford ? (it.level > 0 ? "Upgrade" : "Buy") : "Not enough") + '</button>') +
+    '</div>' +
+  '</div>';
+}
+
+function renderList(key) {
+  const tab = TABS[key];
+  openTab = key;
+  listTitleEl.textContent = tab.title;
+  listNoteEl.textContent = tab.note;
+  shopCashEl.textContent = "$" + cash;
+
+  if (tab.levels) {
+    itemListEl.innerHTML = tab.items.map((it, i) => levelRow(it, key, i)).join("");
+    return;
+  }
+
+  const forSale = tab.items.findIndex(it => !it.owned);
+
+  itemListEl.innerHTML = tab.items.map((it, i) => {
+    const words = [];
+    let pic;
+
+    if (it.owned) {
+      pic = tab.pic(it, i);
+      words.push('<div class="state">Owned</div>');
+      if (tab.isOn(i)) {
+        words.push('<div class="equipped">Equipped</div>');
+        if (!tab.only) words.push(button("unequip", key, i, "Take out", "equip take"));
+      } else {
+        words.push(button("equip", key, i, "Equip", "equip"));
+      }
+    } else {
+      pic = lockedPic();
+      words.push('<div class="state">Not owned</div>');
+      if (i === forSale && it.needsTank !== undefined && !TANKS[it.needsTank].owned) {
+        words.push('<div class="price">$' + it.price + '</div>');
+        words.push('<div class="what">You need tank ' + (it.needsTank + 1) + ' before you can keep these.</div>');
+      } else if (i === forSale) {
+        const canAfford = cash >= it.price;
+        words.push('<div class="price">$' + it.price + '</div>');
+        words.push('<button class="buy" data-act="buy" data-tab="' + key + '" data-i="' + i + '"' +
+                   (canAfford ? "" : " disabled") + '>' +
+                   (canAfford ? "Buy" : "Not enough") + '</button>');
+      } else {
+        words.push('<div class="price">???</div>');
+      }
+    }
+
+    return '<div class="row' + (it.owned ? " owned" : "") + '">' + pic +
+             '<div class="words">' + words.join("") + '</div>' +
+           '</div>';
+  }).join("");
+}
+
+const shopEl = document.getElementById("shop");
+const screens = {
+  menu: document.getElementById("screenMenu"),
+  list: document.getElementById("screenList")
+};
+
+function showScreen(which) {
+  for (const key in screens) screens[key].hidden = (key !== which);
+}
+function openShop() {
+  showScreen("menu");
+  shopEl.hidden = false;
+  document.body.classList.add("shopping");
+}
+function closeShop() {
+  shopEl.hidden = true;
+  document.body.classList.remove("shopping");
+}
+
+document.getElementById("shopBtn").addEventListener("click", openShop);
+
+const helpEl = document.getElementById("help");
+document.getElementById("helpBtn").addEventListener("click", () => {
+  helpEl.hidden = false;
+  document.body.classList.add("shopping");
+});
+helpEl.addEventListener("click", e => {
+  if (e.target.closest("button")) {
+    helpEl.hidden = true;
+    document.body.classList.remove("shopping");
+  }
+});
+
+shopEl.addEventListener("click", e => {
+  const hit = e.target.closest("button");
+  if (!hit) return;
+
+  if (hit.classList.contains("x")) { closeShop(); return; }
+  if (hit.hasAttribute("data-back")) { showScreen("menu"); return; }
+
+  const go = hit.getAttribute("data-go");
+  if (go) {
+    renderList(go);
+    showScreen("list");
+    return;
+  }
+
+  const act = hit.getAttribute("data-act");
+  if (!act) return;
+  const key = hit.getAttribute("data-tab");
+  const tab = TABS[key];
+  const i = Number(hit.getAttribute("data-i"));
+  const item = tab.items[i];
+
+  if (act === "level") {
+    const price = item.base * (item.level + 1);
+    if (item.level < item.max && cash >= price) {
+      cash -= price;
+      item.level++;
+      applyUpgrades();
+    }
+  } else if (act === "buy" && cash >= item.price) {
+    cash -= item.price;
+    item.owned = true;
+  } else if (act === "equip") {
+    tab.on(i);
+  } else if (act === "unequip" && tab.off) {
+    tab.off(i);
+  }
+
+  renderList(key);
+});
+
+// --- put it all together ---------------------------------------------------
+let last = performance.now();
+
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000);
+  last = now;
+  const time = now / 1000;
+
+  update(dt, time);
+
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  ctx.fillStyle = "#201b29";
+  ctx.fillRect(0, 0, cv.width, cv.height);
+  ctx.setTransform(dpr * scale, 0, 0, dpr * scale, dpr * offX, dpr * offY);
+
+  drawRoom();
+  drawStand();
+  drawCureBox();
+
+  // Everything inside is cut to the shape of the tank, so a cylinder's curved
+  // ends really do cut off the water, the sand and everything standing in it.
+  ctx.save();
+  tankPath(ctx, IN.x0, IN.y0, IN.x1, IN.y1, CAP);
+  ctx.clip();
+  drawWater(time);
+  drawSand();
+  drawRocks();
+  drawDecor(time);
+  for (const f of fish) if (f !== carried) drawFish(f, time);
+  drawFlakes();
+  drawDirt();
+  drawBubbles();
+  drawMould();       // on the front glass, in front of the fish
+  ctx.restore();
+
+  drawGlass(time);
+  drawSparks();
+  drawCashPops();
+
+  // the net, either leaning on the right or in your hand
+  if (holding === "net") {
+    drawNet(px, py, 0.25, 250, true);
+  } else {
+    const dx = NET_REST.bx - NET_REST.tx, dy = NET_REST.by - NET_REST.ty;
+    drawNet(NET_REST.tx, NET_REST.ty, -Math.atan2(dx, dy), Math.hypot(dx, dy), false);
+  }
+  // the cloth, either on the floor or in your hand
+  if (holding === "cloth") drawCloth(px, py, true);
+  else drawCloth(CLOTH_REST.x, CLOTH_REST.y, false);
+
+  // the tub of food, next to the cloth
+  if (holding === "food") drawFood(px, py, true, time);
+  else drawFood(FOOD_REST.x, FOOD_REST.y, false, time);
+
+  // a creature in your hand is out of the tank, so it is drawn out here
+  if (carried) drawFish(carried, time);
+
+  drawRuler();     // last, so the numbers are never hidden behind the net
+  updateWords();
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
