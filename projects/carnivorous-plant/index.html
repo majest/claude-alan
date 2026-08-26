@@ -1,0 +1,1712 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Carnivorous Plant</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #101a12; }
+  body {
+    font-family: ui-rounded, "Avenir Next", "Segoe UI", system-ui, sans-serif;
+    -webkit-user-select: none; user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: none;
+    color: #eafbe8;
+  }
+  canvas#game { display: block; width: 100%; height: 100%; cursor: pointer; }
+
+  .chip {
+    background: rgba(8, 24, 14, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    color: #eafbe8;
+    padding: 7px 13px; border-radius: 999px;
+    font-size: 15px; font-weight: 600; white-space: nowrap;
+  }
+  #hud {
+    position: fixed; top: 10px; left: 10px;
+    display: flex; gap: 8px; flex-wrap: wrap;
+    pointer-events: none;
+  }
+  #hud .break { flex-basis: 100%; height: 0; }
+  .chip.button { pointer-events: auto; cursor: pointer; }
+  .chip.helpchip {
+    background: #2f7fd0; border-color: rgba(255,255,255,.5); color: #fff;
+    text-shadow: 0 1px 2px rgba(0, 40, 80, .45);
+  }
+  #buttons {
+    position: fixed; right: 14px; bottom: 68px;
+    display: flex; flex-direction: column; gap: 9px; align-items: flex-end;
+  }
+  .actBtn {
+    width: 148px; padding: 11px 12px 12px;
+    background: rgba(8, 24, 14, .72);
+    border: 2px solid rgba(255,255,255,.2);
+    border-radius: 16px; cursor: pointer; text-align: center;
+  }
+  .actBtn[hidden] { display: none; }
+  .actBtn.ready { border-color: #8fe07a; box-shadow: 0 0 18px rgba(143, 224, 122, .35); }
+  .actBtn:active { transform: translateY(1px); }
+  .actBtn .pIcon { display: block; font-size: 26px; line-height: 1.1; }
+  .actBtn .pName { display: block; font-size: 14px; font-weight: 800; margin: 2px 0 7px; }
+  .actBtn .pBar { display: block; height: 9px; border-radius: 5px; background: rgba(255,255,255,.16); overflow: hidden; }
+  .actBtn .pBar i { display: block; height: 100%; width: 0%; background: #8fe07a; border-radius: 5px; }
+  .chip.hurt { background: rgba(120, 24, 24, .72); border-color: rgba(255, 140, 140, .5); }
+  @media (max-width: 520px) { .actBtn { width: 118px; } #buttons { bottom: 62px; } }
+
+  #hint {
+    position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%);
+    max-width: 92vw; text-align: center; pointer-events: none;
+  }
+
+  /* ---- the screen where you choose your plant ---- */
+  #choose {
+    position: fixed; inset: 0;
+    background: radial-gradient(120% 90% at 50% 0%, #23492c 0%, #12251a 60%, #0b170f 100%);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 22px; padding: 20px; overflow-y: auto;
+  }
+  #choose[hidden] { display: none; }
+  #choose h1 { margin: 0; font-size: 30px; letter-spacing: .5px; }
+  #choose .sub { margin: -14px 0 0; font-size: 16px; color: rgba(234,251,232,.72); }
+
+  .picks {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px;
+    width: min(940px, 100%);
+  }
+  @media (max-width: 760px) { .picks { grid-template-columns: repeat(2, 1fr); } }
+
+  .pick { display: flex; flex-direction: column; align-items: center; gap: 9px; }
+  .pick .square { margin: 0 auto; }
+  /* the name sits above the square */
+  .pickName { font-size: 17px; font-weight: 800; text-align: center; min-height: 22px; }
+  .square {
+    width: 100%; max-width: 176px; aspect-ratio: 1 / 1;
+    background: linear-gradient(#1d3a25, #14291b);
+    border: 2px solid rgba(255,255,255,.16);
+    border-radius: 16px; overflow: hidden; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .square:hover { border-color: #7fd88a; }
+  .square:active { transform: translateY(1px); }
+  .square canvas { width: 100%; height: 100%; display: block; }
+  .pickWhat { font-size: 13px; line-height: 1.4; text-align: center; color: rgba(234,251,232,.72); }
+  .pickPlay {
+    font-size: 13px; line-height: 1.35; text-align: center;
+    font-weight: 700; color: #ffd76a; margin-top: -3px;
+  }
+
+  /* ---- panels (evolving, help) ---- */
+  .sheet {
+    position: fixed; inset: 0; background: rgba(6, 14, 9, 0.86);
+    display: flex; align-items: center; justify-content: center; padding: 14px;
+  }
+  .sheet[hidden] { display: none; }
+  .panel {
+    width: min(560px, 100%); max-height: 94vh; overflow-y: auto;
+    background: #1a2f20; border: 1px solid rgba(255,255,255,.16);
+    border-radius: 18px; padding: 16px 18px 20px;
+  }
+  .panel h2 { margin: 0 0 4px; font-size: 24px; text-align: center; }
+  .panel .sub { margin: 0 0 16px; text-align: center; font-size: 15px; color: rgba(234,251,232,.7); }
+  .panel h3 { margin: 18px 0 6px; font-size: 18px; }
+  .panel h3:first-of-type { margin-top: 2px; }
+  .panel ol { margin: 0; padding-left: 22px; }
+  .panel li { font-size: 15px; line-height: 1.5; margin: 5px 0; }
+  .panel b { color: #ffd76a; }
+  .panel .note { margin: 16px 0 0; text-align: center; font-size: 14px; color: rgba(234,251,232,.66); }
+
+  .choices { display: flex; flex-direction: column; gap: 12px; }
+  .choice {
+    display: flex; align-items: center; gap: 14px; width: 100%;
+    padding: 13px; border-radius: 14px; cursor: pointer;
+    background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.12);
+    color: inherit; font-family: inherit; text-align: left;
+  }
+  .choice:hover { border-color: #7fd88a; }
+  .choice .icon { font-size: 30px; flex: none; width: 42px; text-align: center; }
+  .choice .words { display: flex; flex-direction: column; gap: 3px; }
+  .choice .cName { font-size: 17px; font-weight: 800; }
+  .choice .cWhat { font-size: 14px; color: rgba(234,251,232,.72); line-height: 1.35; }
+  .choice .times { font-size: 13px; font-weight: 600; color: #ffd76a; }
+
+  .closeRow { display: flex; justify-content: center; margin-top: 16px; }
+  .closeBtn {
+    padding: 9px 22px; border-radius: 12px; cursor: pointer;
+    background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.18);
+    color: inherit; font-family: inherit; font-size: 16px; font-weight: 700;
+  }
+</style>
+
+<canvas id="game"></canvas>
+
+<div id="hud">
+  <div class="chip" id="mineralChip">Minerals 0</div>
+  <div class="chip" id="plantChip">Venus Flytrap</div>
+  <div class="chip" id="healthChip">Health 100</div>
+  <div class="chip" id="waveChip">Wave 1</div>
+  <div class="break"></div>
+  <div class="chip button helpchip" id="helpBtn">Help</div>
+</div>
+<div id="buttons">
+  <div class="actBtn" id="shootBtn" hidden>
+    <span class="pIcon">&#128167;</span>
+    <span class="pName" id="shootName">Spit acid</span>
+    <span class="pBar"><i id="shootFill"></i></span>
+  </div>
+  <div class="actBtn" id="powerBtn" hidden>
+    <span class="pIcon" id="powerIcon"></span>
+    <span class="pName" id="powerName">Power</span>
+    <span class="pBar"><i id="powerFill"></i></span>
+  </div>
+</div>
+
+<div id="hint"><div class="chip" id="hintText">Tap when a bug is in your trap.</div></div>
+
+<!-- choose your plant -->
+<div id="choose">
+  <h1>Choose your plant</h1>
+  <p class="sub">Each one catches things a different way.</p>
+  <div class="picks" id="picks"></div>
+</div>
+
+<!-- evolving -->
+<div class="sheet" id="evolve" hidden>
+  <div class="panel">
+    <h2>Evolve</h2>
+    <p class="sub" id="evolveSub">You have enough minerals to change.</p>
+    <div class="choices" id="evolveChoices"></div>
+  </div>
+</div>
+
+<!-- wilted -->
+<div class="sheet" id="over" hidden>
+  <div class="panel">
+    <h2>Your plant has wilted</h2>
+    <p class="sub" id="overSub">The bugs ate more of you than you ate of them.</p>
+    <div class="closeRow"><button class="closeBtn" id="overAgain">Try again</button></div>
+  </div>
+</div>
+
+<!-- help -->
+<div class="sheet" id="help" hidden>
+  <div class="panel">
+    <h2>Help</h2>
+    <h3>Catching things</h3>
+    <ol>
+      <li>Bugs wander over to you because your nectar smells good.</li>
+      <li>When one is <b>inside your trap</b>, tap anywhere to spring it.</li>
+      <li>Tap with nothing in there and your trap is shut for a moment, doing nothing.</li>
+      <li>A trap with something in it is <b>digesting</b> and can't catch anything else.</li>
+    </ol>
+    <h3>Getting bigger</h3>
+    <ol>
+      <li>Digesting gives you <b>minerals</b>. Bigger bugs give more.</li>
+      <li>When you have enough, the Evolve screen appears and you choose what to become.</li>
+      <li>What you choose changes how you play, so pick the way you like hunting.</li>
+    </ol>
+    <h3>Staying alive</h3>
+    <ol>
+      <li>Bugs sitting on you <b>bite</b>, and your health drops. Watch the heart at the top.</li>
+      <li>Every plant can <b>spit acid</b> from its mouth. It kills a bug on the spot and you still get its minerals.</li>
+      <li>An acid kill counts on the wave tab too, exactly like eating one.</li>
+      <li>Eating something puts a little health back.</li>
+      <li>If your health runs out, your plant wilts.</li>
+    </ol>
+
+    <h3>Waves</h3>
+    <ol>
+      <li>Wave 1 asks you to deal with five. Every wave after that wants <b>three more</b> than the last, and more bugs turn up to match.</li>
+      <li><b>Every fifth wave</b> &mdash; 5, 10, 15, 20 &mdash; sends a <b>giant beetle</b> instead, and each one is bigger than the last.</li>
+      <li>It is far too big to swallow. The only way to beat it is acid, and it takes several hits.</li>
+    </ol>
+
+    <h3>What opens up when</h3>
+    <ol>
+      <li>You start with the plain ones: a wider mouth, sweeter nectar, growing larger, sharper senses.</li>
+      <li>Past <b>wave 5</b>: quicker reflexes, stronger juices, tougher leaves, deeper roots.</li>
+      <li>Past <b>wave 20</b>: your plant's own special power, hunting roots, and stronger spit.</li>
+      <li>Past <b>wave 30</b>: <b>leaf walls</b>. Two thick leaves either side of you that crawling things have to chew through first. Your hunting roots wait outside them.</li>
+    </ol>
+
+    <h3>Your own special power</h3>
+    <ol>
+      <li>Every plant has one power that <b>only it</b> can evolve.</li>
+      <li>Once you have it, a button appears in the corner.</li>
+      <li>It reaches much further than your mouth does — but then it needs a long rest.</li>
+      <li>If nothing is in range it won't fire, so you can't waste the wait.</li>
+    </ol>
+    <p class="note">A sundew catches by being sticky, so it works differently from the rest.</p>
+    <div class="closeRow"><button class="closeBtn" id="helpClose">Got it</button></div>
+  </div>
+</div>
+
+<script>
+// ---------------------------------------------------------------------------
+// Everything is drawn in made-up units, 1000 across and 700 down, then scaled
+// to fit whatever screen it is on. Same on a phone as on a laptop.
+// ---------------------------------------------------------------------------
+const WW = 1000, WH = 700;
+const GROUND = 520;             // where the soil starts
+const BASE_X = 500;             // where your plant grows out of the ground
+
+const cv = document.getElementById("game");
+const ctx = cv.getContext("2d");
+let scale = 1, offX = 0, offY = 0, dpr = 1;
+
+function resize() {
+  dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const w = window.innerWidth, h = window.innerHeight;
+  cv.width = Math.round(w * dpr);
+  cv.height = Math.round(h * dpr);
+  scale = Math.min(w / WW, h / WH);
+  offX = (w - WW * scale) / 2;
+  offY = (h - WH * scale) / 2;
+}
+window.addEventListener("resize", resize);
+resize();
+
+const rand = (a, b) => a + Math.random() * (b - a);
+const dist = (ax, ay, bx, by) => Math.hypot(ax - bx, ay - by);
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+
+// ---------------------------------------------------------------------------
+// The four plants you can start as.
+//
+//   reach   how far from the middle of the trap still counts as "in it"
+//   shut    seconds the trap is useless for after a miss
+//   digest  seconds it takes to eat what you caught
+//   worth   how much of a bug's minerals you get
+//   sticky  a sundew doesn't snap — things get stuck and struggle instead
+// ---------------------------------------------------------------------------
+const PLANTS = {
+  flytrap: {
+    name: "Venus Flytrap",
+    hunts: "Inside the trap are tiny trigger hairs. A bug has to brush two of them within about twenty seconds, and then the trap slams shut in less than a second.",
+    play: "Small mouth. Your timing has to be right.",
+    reach: 48, shut: 1.1, digest: 4.5, worth: 1.25, sticky: false,
+    trap: { x: 0, y: -268 }
+  },
+  sundew: {
+    name: "Sundew",
+    hunts: "Every arm is tipped with a drop of glue. Anything that lands is stuck fast, and the arms slowly curl over to wrap it up.",
+    play: "Bugs stick by themselves. Tap in the moment after.",
+    reach: 66, shut: 0.7, digest: 6.0, worth: 0.85, sticky: true, stickFor: 1.7,
+    trap: { x: 0, y: -214 }
+  },
+  pitcher: {
+    name: "Pitcher Plant",
+    hunts: "A deep jug of liquid with a slippery rim. Insects lose their footing, fall in, and cannot climb back out.",
+    play: "Big meals, but slow to empty.",
+    reach: 54, shut: 1.4, digest: 7.0, worth: 1.5, sticky: false,
+    trap: { x: 0, y: -246 }
+  },
+  cobra: {
+    name: "Cobra Lily",
+    hunts: "Its hood is full of see-through windows. A trapped insect flies at the fake light instead of the real way out, and hairs pointing downwards stop it walking back.",
+    play: "The hardest to catch with, and worth the most.",
+    reach: 42, shut: 1.5, digest: 5.5, worth: 1.8, sticky: false,
+    trap: { x: 14, y: -258 }
+  }
+};
+
+// ---------------------------------------------------------------------------
+// One special power each, and only that plant can ever have it. They are
+// strong, so they all need a long rest afterwards.
+//
+//   range   how far it reaches, counted in trap-widths
+//   count   how many things it can take at once
+//   cool    seconds before you can use it again
+// ---------------------------------------------------------------------------
+const POWERS = {
+  flytrap: {
+    id: "power", icon: "\u{1F445}", name: "Long tongue",
+    what: "Shoots out and drags prey in from far away, instead of waiting for it to wander into your mouth.",
+    range: 3.4, count: 1, flying: false, cool: 10, bonus: 1
+  },
+  sundew: {
+    id: "power", icon: "\u{1F33F}", name: "Grasping tentacles",
+    what: "You get hold of your own arms and snatch a bug out of the air, instead of waiting for it to land on you.",
+    range: 2.9, count: 1, flying: false, cool: 9, bonus: 1
+  },
+  pitcher: {
+    id: "power", icon: "\u{1F36F}", name: "Flood of nectar",
+    what: "The smell pours out and everything near you tumbles into the jug at once.",
+    range: 7, count: 3, flying: false, cool: 15, bonus: 1
+  },
+  cobra: {
+    id: "power", icon: "\u{2728}", name: "False light",
+    what: "Your windows dazzle a flying bug and it goes straight down your throat, worth double.",
+    range: 9, count: 1, flying: true, cool: 11, bonus: 2
+  }
+};
+
+// ---------------------------------------------------------------------------
+// The bugs
+// ---------------------------------------------------------------------------
+const BUGS = {
+  ant:    { name: "ant",    r: 8,  minerals: 3,  flies: false, speed: [42, 62], bite: 1.5 },
+  fly:    { name: "fly",    r: 9,  minerals: 5,  flies: true,  speed: [70, 100], bite: 1.5 },
+  beetle: { name: "beetle", r: 13, minerals: 9,  flies: false, speed: [26, 40], bite: 4 },
+  moth:   { name: "moth",   r: 15, minerals: 14, flies: true,  speed: [52, 74], bite: 2.5 },
+  // the wave-five boss
+  giant:  { name: "giant beetle", r: 34, minerals: 70, flies: false, speed: [16, 22], bite: 9, tough: 6 }
+};
+
+// ---------------------------------------------------------------------------
+// What is going on right now
+// ---------------------------------------------------------------------------
+let kind = "flytrap";       // which plant you are
+let plant = PLANTS.flytrap;
+let grown = 1;              // gets bigger as you evolve
+let level = 0;              // how many times you have evolved
+let senses = 0;             // how many times you sharpened your senses
+let nectar = 0;             // how sweet your nectar is, so bigger bugs come
+let soil = 0;               // how deep your roots go
+let soilBank = 0;           // soil minerals, saved up until they make a whole one
+let minerals = 0;
+let caught = 0;
+
+let trapOpen = 1;           // 1 open, 0 shut
+let shutFor = 0;            // seconds left of being uselessly shut
+let digesting = 0;          // seconds left of eating
+let digestOf = 0;           // how long this digest takes, for the little bar
+let held = null;            // what is being digested
+let heldValue = 0;          // and what it will be worth
+let power = null;           // your plant's special, once you have evolved it
+let powerCool = 0;          // seconds until you can use it again
+const powerFx = [];         // the reaching-out lines, so you can see it happen
+
+const bugs = [];
+const bits = [];            // little puffs when something happens
+const acids = [];           // globs of acid in the air
+
+let health = 100;
+const MAX_HEALTH = 100;
+let wave = 1;
+let eatenThisWave = 0;
+let boss = null;
+let dead = false;
+
+let acidCool = 0;
+let ACID_COOL = 1.6;        // spitting acid is quick to recharge
+
+// Roots that hunt for you. Five of them, each waiting its own five seconds.
+let roots = [];
+let rootCool = 5;
+let rootReach = 86;
+// All five sit well clear of the middle, so that when the leaf walls grow at
+// wave 30 every root is still outside them.
+const ROOT_SPOTS = [-234, -158, -104, 124, 208];
+
+// Thick leaves that grow into walls either side of you. Crawling things stop
+// and chew the wall instead of you. Flying things go straight over the top.
+let walls = [];
+const WALL_AT = 90;         // how far out from the stem they stand
+const WALL_TOP = 118;       // how tall they are
+
+function growWalls() {
+  walls = [-1, 1].map(side => ({ side: side, hp: 40, max: 40, regrow: 0 }));
+}
+function wallX(w) { return BASE_X + w.side * WALL_AT * grown; }
+function wallAlive(w) { return w.hp > 0; }
+
+function growRoots() {
+  roots = ROOT_SPOTS.map(ox => ({ ox: ox, cool: 0, fx: 0, tx: 0, ty: 0 }));
+}
+
+function isBossWave(n) { return n % 5 === 0; }
+// Wave 1 wants 5, and every wave after that wants three more than the last.
+function waveTarget() { return isBossWave(wave) ? 1 : 2 + wave * 3; }
+let spawnIn = 1.5;
+let started = false;
+let paused = false;         // true while a panel is up
+
+// Evolving gets dearer each time.
+const STEPS = [30, 80, 170, 320];
+function nextStep() {
+  return level < STEPS.length ? STEPS[level] : 320 + (level - 3) * 240;
+}
+
+// Opens the evolve screen, but never on top of itself or of the help page.
+function checkEvolve() {
+  if (!paused && minerals >= nextStep()) openEvolve();
+}
+
+// How big this plant is allowed to get. Grow past this and the top of it —
+// with your mouth on it — climbs off the top of the screen, and bugs fly to a
+// spot you cannot see or reach.
+function growMax() {
+  return (GROUND - 130) / Math.abs(plant.trap.y);
+}
+function growBy(times) {
+  grown = Math.min(grown * times, growMax());
+}
+
+function trapPoint() {
+  return { x: BASE_X + plant.trap.x * grown, y: GROUND + plant.trap.y * grown };
+}
+function reach() { return plant.reach * grown; }
+
+// ---------------------------------------------------------------------------
+// Bugs coming and going
+// ---------------------------------------------------------------------------
+function spawnBug() {
+  const names = Object.keys(BUGS);
+  // bigger bugs turn up more once you are bigger
+  const pick = Math.random() < 0.22 + nectar * 0.16 + level * 0.04
+    ? names[2 + Math.floor(Math.random() * 2)]
+    : names[Math.floor(Math.random() * 2)];
+  const b = BUGS[pick];
+  const fromLeft = Math.random() < 0.5;
+  const t = trapPoint();
+
+  bugs.push({
+    type: b,
+    x: fromLeft ? -40 : WW + 40,
+    y: b.flies ? rand(140, GROUND - 80) : GROUND - 6,
+    // Flying things make straight for the trap. Crawling things walk to the
+    // bottom of the stem first and climb up it, which is how a real flytrap
+    // catches ants.
+    tx: b.flies ? t.x + rand(-reach() * 0.5, reach() * 0.5) : BASE_X + rand(-16, 16),
+    ty: b.flies ? t.y + rand(-reach() * 0.5, reach() * 0.5) : GROUND - 6,
+    climbs: !b.flies,
+    speed: rand(b.speed[0], b.speed[1]),
+    phase: rand(0, 6.3),
+    state: "coming",
+    linger: rand(2.2, 4.5),
+    biteIn: rand(1.4, 2.6),
+    hp: 1,
+    stuck: 0,
+    dir: fromLeft ? 1 : -1
+  });
+}
+
+function banner(text) {
+  bits.push({ x: BASE_X, y: 200, vx: 0, vy: -16, life: 2.4, colour: "255, 226, 122", text: text });
+}
+
+function spawnBoss() {
+  const fromLeft = Math.random() < 0.5;
+  // The fifth wave sends the first one. Every fifth wave after that sends a
+  // bigger one, or wave 40 would be no harder than wave 5.
+  const tier = wave / 5;
+  boss = {
+    hp: BUGS.giant.tough + (tier - 1) * 3,
+    bite: BUGS.giant.bite + (tier - 1) * 2,
+    pay: BUGS.giant.minerals * tier,
+    type: BUGS.giant,
+    x: fromLeft ? -70 : WW + 70,
+    y: GROUND - 14,
+    tx: BASE_X + rand(-20, 20),
+    ty: GROUND - 14,
+    speed: rand(16, 22),
+    phase: rand(0, 6.3),
+    state: "coming",
+    linger: 1e9,              // it does not wander off. It has to be killed.
+    biteIn: 3,
+    stuck: 0,
+    dir: fromLeft ? 1 : -1,
+    climbs: true
+  };
+  bugs.push(boss);
+}
+
+function startWave() {
+  eatenThisWave = 0;
+  banner(isBossWave(wave) ? "Wave " + wave + " — BOSS" : "Wave " + wave);
+  if (isBossWave(wave)) spawnBoss();
+}
+
+function checkWave() {
+  if (dead) return;
+  // On a boss wave the only thing that ends it is the boss dying. Counting
+  // ordinary bugs here would let you skip straight past it by eating an ant.
+  if (isBossWave(wave)) {
+    if (!boss) { wave++; startWave(); }
+    return;
+  }
+  if (eatenThisWave >= waveTarget()) {
+    wave++;
+    startWave();
+  }
+}
+
+function endGame() {
+  health = 0;
+  dead = true;
+  paused = true;
+  document.getElementById("overSub").textContent =
+    "You reached wave " + wave + " and ate " + caught + " of them.";
+  document.getElementById("over").hidden = false;
+}
+
+function puff(x, y, colour, n) {
+  for (let i = 0; i < (n || 7); i++) {
+    const a = rand(0, Math.PI * 2);
+    bits.push({ x, y, vx: Math.cos(a) * rand(25, 90), vy: Math.sin(a) * rand(25, 90), life: 1, colour });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Springing the trap
+// ---------------------------------------------------------------------------
+function bugWorth(b, times) {
+  return Math.round(b.type.minerals * plant.worth * (1 + level * 0.25) * (times || 1));
+}
+
+// Swallow a list of bugs. One from a normal snap, sometimes several from a
+// special power.
+function swallow(list, times) {
+  heldValue = 0;
+  health = Math.min(MAX_HEALTH, health + 4 * list.length);   // a meal does you good
+  eatenThisWave += list.length;
+  for (const b of list) {
+    heldValue += bugWorth(b, times);
+    const at = bugs.indexOf(b);
+    if (at >= 0) bugs.splice(at, 1);
+    caught++;
+  }
+  held = list[0];
+  digesting = plant.digest * (1 + (list.length - 1) * 0.5);
+  digestOf = digesting;
+  trapOpen = 0;
+  checkWave();
+}
+
+function springTrap() {
+  if (!started || paused) return;
+  if (digesting > 0 || shutFor > 0) return;
+
+  const t = trapPoint();
+  let best = null, bestD = 1e9;
+  for (const b of bugs) {
+    if (b.state === "gone" || b.type.tough) continue;   // the boss will not fit
+    // a sundew can only keep what is already stuck to it
+    if (plant.sticky && b.stuck <= 0) continue;
+    const d = dist(b.x, b.y, t.x, t.y);
+    if (d < reach() && d < bestD) { bestD = d; best = b; }
+  }
+
+  trapOpen = 0;
+  if (best) {
+    swallow([best], 1);
+    puff(t.x, t.y, "255, 226, 122", 10);
+  } else {
+    shutFor = plant.shut;
+    puff(t.x, t.y, "180, 200, 180", 5);
+  }
+}
+
+// Using your plant's special. If nothing is in range it doesn't fire at all,
+// so you never waste the long wait on an empty grab.
+function firePower() {
+  if (!power || !started || paused) return;
+  if (powerCool > 0 || digesting > 0) return;
+
+  const t = trapPoint();
+  const far = reach() * power.range;
+  const inRange = bugs.filter(b =>
+    b.state !== "gone" && !b.type.tough &&
+    (!power.flying || b.type.flies) && dist(b.x, b.y, t.x, t.y) < far
+  );
+  if (!inRange.length) return;
+
+  inRange.sort((a, b) => b.type.minerals - a.type.minerals);   // take the best ones
+  const grabbed = inRange.slice(0, power.count);
+  for (const b of grabbed) powerFx.push({ x: b.x, y: b.y, life: 0.4 });
+
+  swallow(grabbed, power.bonus);
+  powerCool = power.cool;
+  puff(t.x, t.y, "255, 226, 122", 14);
+}
+
+// Acid comes out of the mouth and dissolves whatever it lands on. It does not
+// feed you and it does not count towards the wave — it is there to stop things
+// chewing on you. The boss is the one thing that can only be killed this way.
+function shootAcid() {
+  if (!started || paused || dead || acidCool > 0) return;
+
+  const t = trapPoint();
+  let target = null, bestD = 1e9;
+  for (const b of bugs) {
+    if (b.state === "gone") continue;
+    const d = dist(b.x, b.y, t.x, t.y);
+    if (d < bestD) { bestD = d; target = b; }
+  }
+  if (!target) return;
+
+  acidCool = ACID_COOL;
+  acids.push({ x: t.x, y: t.y, target: target, life: 2.5 });
+}
+
+function hitWithAcid(b) {
+  puff(b.x, b.y, "170, 220, 90", 9);
+  if (b.type.tough) {
+    b.hp--;
+    if (b.hp > 0) return;                     // the big one takes a few goes
+  }
+  // Dissolved counts as dealt with: you get the minerals, and it ticks the
+  // wave along too. On a boss wave the boss itself is the only thing that
+  // finishes it, so ordinary bugs killed then don't move the count.
+  const got = Math.round((b.pay || b.type.minerals) * plant.worth * (1 + level * 0.25));
+  minerals += got;
+  bits.push({ x: b.x, y: b.y - 20, vx: 0, vy: -30, life: 1.8,
+              colour: "255, 226, 122", text: "+" + got });
+  if (!b.type.tough) eatenThisWave++;
+  const at = bugs.indexOf(b);
+  if (at >= 0) bugs.splice(at, 1);
+  if (b === boss) boss = null;
+  checkWave();
+  checkEvolve();
+}
+
+// ---------------------------------------------------------------------------
+// Everything moving
+// ---------------------------------------------------------------------------
+function update(dt, time) {
+  if (!started || paused) return;
+
+  // the trap opening and shutting
+  if (digesting > 0) {
+    digesting -= dt;
+    trapOpen = Math.max(0, trapOpen - dt * 6);
+    if (digesting <= 0) {
+      const got = heldValue;
+      minerals += got;
+      const t = trapPoint();
+      puff(t.x, t.y, "150, 230, 140", 9);
+      bits.push({ x: t.x, y: t.y - 20, vx: 0, vy: -34, life: 1.6, colour: "255, 226, 122",
+                  text: "+" + got });
+      held = null;
+      heldValue = 0;
+      digesting = 0;
+      checkEvolve();
+    }
+  } else if (shutFor > 0) {
+    shutFor -= dt;
+    trapOpen = Math.max(0, trapOpen - dt * 6);
+  } else {
+    trapOpen = Math.min(1, trapOpen + dt * 3);
+  }
+
+  if (powerCool > 0) powerCool = Math.max(0, powerCool - dt);
+  if (acidCool > 0) acidCool = Math.max(0, acidCool - dt);
+
+  // leaf walls growing back after they have been chewed through
+  for (const w of walls) {
+    if (w.hp > 0) continue;
+    w.regrow -= dt;
+    if (w.regrow <= 0) {
+      w.hp = w.max;
+      puff(wallX(w), GROUND - 60 * grown, "170, 230, 130", 12);
+    }
+  }
+
+  // the hunting roots, each striking on its own
+  for (const r of roots) {
+    if (r.fx > 0) r.fx -= dt;
+    if (r.cool > 0) { r.cool -= dt; continue; }
+
+    const rx = BASE_X + r.ox * grown;
+    for (const b of bugs) {
+      if (b.type.tough || b.state === "gone") continue;   // far too big for a root
+      if (dist(b.x, b.y, rx, GROUND) > rootReach * grown) continue;
+
+      r.cool = rootCool;
+      r.fx = 0.3;
+      r.tx = b.x;
+      r.ty = b.y;
+      const got = Math.round(b.type.minerals * plant.worth * (1 + level * 0.25));
+      minerals += got;
+      bits.push({ x: b.x, y: b.y - 16, vx: 0, vy: -28, life: 1.4,
+                  colour: "255, 226, 122", text: "+" + got });
+      puff(b.x, b.y, "186, 146, 96", 7);
+      bugs.splice(bugs.indexOf(b), 1);
+      checkEvolve();
+      break;
+    }
+  }
+
+  // If the boss ever leaves the list of bugs without being killed, the wave
+  // could never finish and the game would be stuck for good.
+  if (boss && bugs.indexOf(boss) === -1) { boss = null; checkWave(); }
+
+  for (let i = acids.length - 1; i >= 0; i--) {
+    const a = acids[i];
+    a.life -= dt;
+    if (a.life <= 0 || bugs.indexOf(a.target) === -1) { acids.splice(i, 1); continue; }
+    const dx = a.target.x - a.x, dy = a.target.y - a.y;
+    const d = Math.hypot(dx, dy) || 1;
+    a.x += dx / d * 560 * dt;
+    a.y += dy / d * 560 * dt;
+    if (d < 16) { hitWithAcid(a.target); acids.splice(i, 1); }
+  }
+  for (let i = powerFx.length - 1; i >= 0; i--) {
+    powerFx[i].life -= dt;
+    if (powerFx[i].life <= 0) powerFx.splice(i, 1);
+  }
+
+  // deep roots pull a little out of the soil even when you catch nothing
+  if (soil > 0) {
+    soilBank += soil * 0.15 * dt;
+    if (soilBank >= 1) {
+      const whole = Math.floor(soilBank);
+      soilBank -= whole;
+      minerals += whole;
+      checkEvolve();
+    }
+  }
+
+  // bugs
+  // How often something wanders over. The wait is four times as long as it
+  // first was, so you get a quarter of the bugs — and every time you sharpen
+  // your senses more of them notice you: a quarter, then a half, and so on.
+  spawnIn -= dt;
+  // The gap between bugs is what controls how many come. The 16 is only a
+  // safety net so nothing can ever run away with itself — cap it any lower and
+  // sharpening your senses stops making a difference.
+  if (spawnIn <= 0 && bugs.length < 16) {
+    // Later waves ask for a lot more, so more of them have to turn up — or
+    // wave 20 would be six minutes of standing about waiting.
+    spawnIn = rand(1.1, 2.6) * 4 / ((1 + senses) * (1 + wave * 0.09));
+    spawnBug();
+  }
+
+  const t = trapPoint();
+  for (let i = bugs.length - 1; i >= 0; i--) {
+    const b = bugs[i];
+
+    if (b.stuck > 0) {
+      // stuck to a sundew: it wriggles about but can't get away, for a while
+      b.stuck -= dt;
+      b.x += Math.sin(time * 22 + b.phase) * 22 * dt;
+      b.y += Math.cos(time * 19 + b.phase) * 14 * dt;
+      if (b.stuck <= 0) { b.state = "leaving"; puff(b.x, b.y, "200, 220, 200", 4); }
+      continue;
+    }
+
+    if (b.state === "coming") {
+      const dx = b.tx - b.x, dy = b.ty - b.y;
+      const d = Math.hypot(dx, dy) || 1;
+      b.dir = dx >= 0 ? 1 : -1;
+      b.x += dx / d * b.speed * dt;
+      b.y += dy / d * b.speed * dt;
+      if (b.type.flies) b.y += Math.sin(time * 6 + b.phase) * 20 * dt;
+      // a wall on this side stops anything that walks
+      if (!b.type.flies && b.climbs && walls.length) {
+        const side = b.x < BASE_X ? -1 : 1;
+        const w = walls[side === -1 ? 0 : 1];
+        if (w && wallAlive(w)) {
+          const wx = wallX(w);
+          const outside = side === -1 ? b.x < wx : b.x > wx;
+          if (!outside) {
+            b.x = wx + side * 16;
+            b.state = "wall";
+            b.wall = w;
+            b.biteIn = 0.6;
+            continue;
+          }
+        }
+      }
+
+      if (d < 8) {
+        if (b.climbs) {
+          // reached the stem — now start climbing towards the trap
+          b.climbs = false;
+          b.tx = t.x + rand(-reach() * 0.4, reach() * 0.4);
+          b.ty = t.y + rand(-reach() * 0.4, reach() * 0.4);
+          b.speed *= 0.75;                       // climbing is slower than walking
+        } else {
+          b.state = "at";
+        }
+      }
+      // a sundew grabs hold the moment something touches it
+      if (plant.sticky && dist(b.x, b.y, t.x, t.y) < reach() * 0.8 && digesting <= 0 && shutFor <= 0) {
+        b.stuck = plant.stickFor;
+        puff(b.x, b.y, "240, 120, 150", 5);
+      }
+    } else if (b.state === "wall") {
+      // chewing on a leaf wall instead of on you
+      const w = b.wall;
+      if (!w || !wallAlive(w)) { b.state = "coming"; b.wall = null; continue; }
+      b.biteIn -= dt;
+      if (b.biteIn <= 0) {
+        b.biteIn = 2.4;
+        w.hp -= (b.bite || b.type.bite) * 2;
+        puff(b.x, b.y - 8, "126, 186, 96", 5);
+        if (w.hp <= 0) {
+          w.hp = 0;
+          w.regrow = 16;
+          puff(wallX(w), GROUND - 60 * grown, "150, 200, 110", 14);
+        }
+      }
+    } else if (b.state === "at") {
+      // sitting on you and chewing
+      b.biteIn -= dt;
+      if (b.biteIn <= 0) {
+        b.biteIn = 2.4;
+        health -= (b.bite || b.type.bite);
+        puff(b.x, b.y, "230, 90, 90", 5);
+        bits.push({ x: b.x, y: b.y - 14, vx: 0, vy: -28, life: 1.2,
+                    colour: "255, 120, 120", text: "-" + (b.bite || b.type.bite) });
+        if (health <= 0) { endGame(); return; }
+      }
+      b.linger -= dt;
+      b.x += Math.sin(time * 3 + b.phase) * 26 * dt;
+      if (b.type.flies) b.y += Math.cos(time * 2.4 + b.phase) * 20 * dt;
+      if (plant.sticky && dist(b.x, b.y, t.x, t.y) < reach() * 0.8 && digesting <= 0 && shutFor <= 0) {
+        b.stuck = plant.stickFor;
+        puff(b.x, b.y, "240, 120, 150", 5);
+      }
+      if (b.linger <= 0) b.state = "leaving";
+    } else {
+      if (!b.type.flies && b.y < GROUND - 14) {
+        b.y += b.speed * 1.2 * dt;               // climb back down the stem
+        b.x += b.dir * 8 * dt;
+      } else {
+        b.x += b.dir * (b.speed * 1.3) * dt;
+        if (b.type.flies) b.y -= 24 * dt;
+      }
+      if (b.x < -70 || b.x > WW + 70) bugs.splice(i, 1);
+    }
+  }
+
+  // puffs
+  for (let i = bits.length - 1; i >= 0; i--) {
+    const p = bits[i];
+    p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt * (p.text ? 0.7 : 2);
+    if (p.life <= 0) bits.splice(i, 1);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Drawing
+// ---------------------------------------------------------------------------
+function roundRect(c, x, y, w, h, r) {
+  c.beginPath();
+  c.moveTo(x + r, y);
+  c.arcTo(x + w, y, x + w, y + h, r);
+  c.arcTo(x + w, y + h, x, y + h, r);
+  c.arcTo(x, y + h, x, y, r);
+  c.arcTo(x, y, x + w, y, r);
+  c.closePath();
+}
+
+function drawSky(time) {
+  const g = ctx.createLinearGradient(0, -200, 0, GROUND);
+  g.addColorStop(0, "#8fd0a8");
+  g.addColorStop(0.55, "#5fa87f");
+  g.addColorStop(1, "#3d7a5a");
+  ctx.fillStyle = g;
+  ctx.fillRect(-400, -400, WW + 800, GROUND + 400);
+
+  // trees, furthest back
+  const trees = [[60, 1.05], [232, 0.72], [428, 0.92], [648, 0.66], [836, 1.1], [968, 0.8]];
+  for (const [x, sc] of trees) {
+    const h = 250 * sc;
+    ctx.fillStyle = "rgba(16, 46, 30, .34)";
+    ctx.fillRect(x - 9 * sc, GROUND - h * 0.6, 18 * sc, h * 0.6);
+    ctx.fillStyle = "rgba(20, 58, 36, .38)";
+    for (let i = 0; i < 3; i++) {
+      ctx.beginPath();
+      ctx.ellipse(x + (i - 1) * 32 * sc, GROUND - h * (0.62 + i * 0.1),
+                  62 * sc, 40 * sc, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // soft plants in the distance
+  ctx.fillStyle = "rgba(20, 60, 38, .28)";
+  for (let i = 0; i < 9; i++) {
+    const x = -60 + i * 130 + Math.sin(i * 2.3) * 30;
+    const h = 150 + Math.sin(i * 1.7) * 70;
+    ctx.beginPath();
+    ctx.moveTo(x, GROUND);
+    ctx.quadraticCurveTo(x + 26, GROUND - h * 0.6, x + 8, GROUND - h);
+    ctx.quadraticCurveTo(x + 54, GROUND - h * 0.55, x + 62, GROUND);
+    ctx.fill();
+  }
+}
+
+function drawGround() {
+  const g = ctx.createLinearGradient(0, GROUND, 0, WH);
+  g.addColorStop(0, "#4a3a25");
+  g.addColorStop(1, "#2b2115");
+  ctx.fillStyle = g;
+  ctx.fillRect(-400, GROUND, WW + 800, WH - GROUND + 400);
+
+  ctx.fillStyle = "rgba(120, 160, 90, .5)";
+  ctx.fillRect(-400, GROUND - 5, WW + 800, 8);
+  ctx.fillStyle = "rgba(0,0,0,.16)";
+  for (let i = 0; i < 120; i++) {
+    const x = (i * 137) % (WW + 200) - 100;
+    const y = GROUND + 14 + ((i * 53) % 150);
+    ctx.fillRect(x, y, 3, 3);
+  }
+}
+
+// --- the plants themselves -------------------------------------------------
+// Each one is drawn from where it comes out of the ground, growing upwards.
+// open is 1 for wide open and 0 for shut.
+function drawFlytrap(c, s, open, time, busy) {
+  c.strokeStyle = "#3f7d3a";
+  c.lineWidth = 13 * s;
+  c.lineCap = "round";
+  for (const side of [-1, 1]) {
+    c.beginPath();
+    c.moveTo(0, 0);
+    c.quadraticCurveTo(side * 46 * s, -90 * s, side * 62 * s, -150 * s);
+    c.stroke();
+    drawTrapHead(c, side * 62 * s, -150 * s, 26 * s, side * 0.5, open, "#6cb04a");
+  }
+  c.lineWidth = 15 * s;
+  c.beginPath();
+  c.moveTo(0, 0);
+  c.quadraticCurveTo(6 * s, -140 * s, 0, -224 * s);
+  c.stroke();
+  drawTrapHead(c, 0, -262 * s, 44 * s, 0, open, busy ? "#8ab84f" : "#7ec254");
+}
+
+function drawTrapHead(c, x, y, r, lean, open, colour) {
+  c.save();
+  c.translate(x, y);
+  c.rotate(lean);
+  const spread = 0.12 + open * 0.85;      // how far the two halves gape
+  for (const side of [-1, 1]) {
+    c.save();
+    c.rotate(side * spread);
+    const g = c.createLinearGradient(0, 0, 0, -r);
+    g.addColorStop(0, colour);
+    g.addColorStop(1, "#c8465f");          // red inside, like the real thing
+    c.fillStyle = g;
+    c.beginPath();
+    c.ellipse(side * r * 0.42, -r * 0.1, r * 0.55, r, side * 0.25, 0, Math.PI * 2);
+    c.fill();
+    // teeth
+    c.strokeStyle = colour;
+    c.lineWidth = Math.max(1.4, r * 0.09);
+    for (let i = -2; i <= 2; i++) {
+      const a = i * 0.42;
+      const ox = side * r * 0.42 + Math.sin(a) * r * 0.5;
+      const oy = -r * 0.1 - Math.cos(a) * r * 0.9;
+      c.beginPath();
+      c.moveTo(ox, oy);
+      c.lineTo(ox + side * r * 0.2, oy - r * 0.34);
+      c.stroke();
+    }
+    c.restore();
+  }
+  c.restore();
+}
+
+function drawSundew(c, s, open, time, busy) {
+  c.strokeStyle = "#4e8a3f";
+  c.lineWidth = 9 * s;
+  c.lineCap = "round";
+  const arms = 9;
+  for (let i = 0; i < arms; i++) {
+    const a = -1.25 + (i / (arms - 1)) * 2.5;
+    const len = (128 + Math.cos(a) * 74) * s;
+    const sway = Math.sin(time * 1.3 + i) * 0.05;
+    const ex = Math.sin(a + sway) * len;
+    const ey = -Math.cos(a + sway) * len - 40 * s;
+    c.beginPath();
+    c.moveTo(0, 0);
+    c.quadraticCurveTo(Math.sin(a) * len * 0.4, -len * 0.6, ex, ey);
+    c.stroke();
+    // the sticky blobs on the ends
+    for (let k = 0; k < 4; k++) {
+      const t = 0.45 + k * 0.18;
+      const bx = ex * t + Math.sin(a) * len * 0.4 * (1 - t) * 0.6;
+      const by = ey * t;
+      c.fillStyle = "rgba(232, 78, 110, .85)";
+      c.beginPath();
+      c.arc(bx, by, 5.5 * s, 0, Math.PI * 2);
+      c.fill();
+      c.fillStyle = "rgba(255, 220, 235, .9)";
+      c.beginPath();
+      c.arc(bx - 1.6 * s, by - 1.6 * s, 2.2 * s, 0, Math.PI * 2);
+      c.fill();
+    }
+  }
+  c.fillStyle = busy ? "#7fbf55" : "#5f9a44";
+  c.beginPath();
+  c.ellipse(0, -14 * s, 40 * s, 20 * s, 0, 0, Math.PI * 2);
+  c.fill();
+}
+
+// Mixes a colour towards the shadows. Used to push the tubes at the back of
+// the clump away, instead of painting a dark shape over them — that left grey
+// boxes hanging in the air above them.
+function dim(hex, amount) {
+  const n = parseInt(hex.slice(1), 16);
+  const k = 1 - amount;
+  return "rgb(" + Math.round(((n >> 16) & 255) * k + 12 * amount) + "," +
+                  Math.round(((n >> 8) & 255) * k + 26 * amount) + "," +
+                  Math.round((n & 255) * k + 11 * amount) + ")";
+}
+
+// One tube. The clump below is made of several of these.
+function onePitcher(c, ox, h, w, open, shade, busy, lean) {
+  c.save();
+  c.translate(ox, 0);
+  if (lean) c.rotate(lean);      // leans out from where it comes out of the ground
+
+  c.beginPath();
+  c.moveTo(-w * 0.55, 0);
+  c.quadraticCurveTo(-w * 1.05, -h * 0.55, -w * 0.86, -h);
+  c.lineTo(w * 0.86, -h);
+  c.quadraticCurveTo(w * 1.05, -h * 0.55, w * 0.55, 0);
+  c.closePath();
+  const g = c.createLinearGradient(-w, 0, w, 0);
+  g.addColorStop(0, dim("#4f8b3e", shade));
+  g.addColorStop(0.5, dim(busy ? "#9ad066" : "#83c05a", shade));
+  g.addColorStop(1, dim("#3f7333", shade));
+  c.fillStyle = g;
+  c.fill();
+
+  // red veins, kept inside the tube
+  c.save();
+  c.clip();
+  c.strokeStyle = "rgba(180, 50, 60, " + (0.38 * (1 - shade)) + ")";
+  c.lineWidth = Math.max(1.4, w * 0.09);
+  for (let i = -1; i <= 1; i++) {
+    c.beginPath();
+    c.moveTo(i * w * 0.45, 0);
+    c.quadraticCurveTo(i * w * 0.62, -h * 0.55, i * w * 0.5, -h);
+    c.stroke();
+  }
+  c.restore();
+
+  // the rim, and the dark hole down the middle
+  c.fillStyle = dim("#c8465f", shade);
+  c.beginPath();
+  c.ellipse(0, -h, w * 0.95, Math.max(3.5, w * 0.26), 0, 0, Math.PI * 2);
+  c.fill();
+  c.fillStyle = dim("#1c2a16", shade * 0.5);
+  c.beginPath();
+  c.ellipse(0, -h, w * 0.68, Math.max(2.2, w * 0.17), 0, 0, Math.PI * 2);
+  c.fill();
+
+  // the lid, which leans over further while the plant is busy
+  c.save();
+  c.translate(0, -h - w * 0.1);
+  c.rotate(-0.5 - (1 - open) * 0.45);
+  c.fillStyle = dim("#6fae4c", shade);
+  c.beginPath();
+  c.ellipse(0, -w * 0.55, w * 0.95, w * 0.56, 0, 0, Math.PI * 2);
+  c.fill();
+  c.restore();
+
+  c.restore();
+}
+
+// A clump of tubes, like they really grow. The tall one in the middle is the
+// one that catches things; the rest are there to look right.
+function drawPitcher(c, s, open, time, busy) {
+  const H = 250 * s, W = 40 * s;
+  const clump = [
+    { x: -156, h: 0.50, w: 0.60, shade: 0.40, lean: -0.16 },
+    { x:  146, h: 0.58, w: 0.64, shade: 0.34, lean:  0.15 },
+    { x:  -84, h: 0.76, w: 0.80, shade: 0.20, lean: -0.09 },
+    { x:   90, h: 0.86, w: 0.84, shade: 0.14, lean:  0.08 }
+  ];
+  for (const t of clump) onePitcher(c, t.x * s, H * t.h, W * t.w, open, t.shade, false, t.lean);
+  onePitcher(c, 0, H, W, open, 0, busy, 0);   // the catching one, upright and in front
+}
+
+function drawCobra(c, s, open, time, busy) {
+  const h = 240 * s, w = 52 * s;
+  const g = c.createLinearGradient(-w, 0, w, 0);
+  g.addColorStop(0, "#527f45");
+  g.addColorStop(0.5, "#93bd6b");
+  g.addColorStop(1, "#41663a");
+  c.fillStyle = g;
+  // a tube that curves over at the top like a snake about to strike
+  c.beginPath();
+  c.moveTo(-w * 0.5, 0);
+  c.quadraticCurveTo(-w * 1.0, -h * 0.6, -w * 0.1, -h);
+  c.quadraticCurveTo(w * 0.9, -h * 1.16, w * 1.25, -h * 0.74);
+  c.quadraticCurveTo(w * 1.5, -h * 0.44, w * 0.62, -h * 0.5);
+  c.quadraticCurveTo(w * 0.5, -h * 0.7, w * 0.12, -h * 0.62);
+  c.quadraticCurveTo(w * 0.2, -h * 0.3, w * 0.52, 0);
+  c.closePath();
+  c.fill();
+
+  // the see-through windows that fool bugs into flying at them
+  c.fillStyle = "rgba(240, 255, 230, .5)";
+  for (let i = 0; i < 7; i++) {
+    c.beginPath();
+    c.ellipse(w * (0.15 + (i % 3) * 0.28), -h * (0.82 + Math.floor(i / 3) * 0.09),
+              7 * s, 5 * s, 0.4, 0, Math.PI * 2);
+    c.fill();
+  }
+
+  // the forked tongue under the hood, where things go in
+  c.fillStyle = "#c8465f";
+  c.save();
+  c.translate(w * 1.05, -h * 0.68);
+  c.rotate(0.5 + (1 - open) * 0.4);
+  c.beginPath();
+  c.moveTo(0, 0);
+  c.lineTo(w * 0.7, w * 0.34);
+  c.lineTo(w * 0.34, w * 0.42);
+  c.lineTo(w * 0.62, w * 0.86);
+  c.lineTo(0, w * 0.5);
+  c.closePath();
+  c.fill();
+  c.restore();
+}
+
+function drawPlant(c, which, s, open, time, busy) {
+  if (which === "flytrap") drawFlytrap(c, s, open, time, busy);
+  else if (which === "sundew") drawSundew(c, s, open, time, busy);
+  else if (which === "pitcher") drawPitcher(c, s, open, time, busy);
+  else drawCobra(c, s, open, time, busy);
+}
+
+// --- bugs ------------------------------------------------------------------
+function drawBug(b, time) {
+  const s = b.type.r;
+  ctx.save();
+  ctx.translate(b.x, b.y);
+  ctx.scale(b.dir, 1);
+  if (b.stuck > 0) ctx.rotate(Math.sin(time * 24 + b.phase) * 0.35);
+
+  if (b.type === BUGS.ant) {
+    ctx.fillStyle = "#3a2a1c";
+    for (const [ox, r] of [[-s * 0.7, s * 0.45], [0, s * 0.38], [s * 0.7, s * 0.5]]) {
+      ctx.beginPath(); ctx.arc(ox, 0, r, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.strokeStyle = "#3a2a1c"; ctx.lineWidth = s * 0.14;
+    for (let i = -1; i <= 1; i++) {
+      ctx.beginPath(); ctx.moveTo(i * s * 0.4, s * 0.2); ctx.lineTo(i * s * 0.55, s * 0.85); ctx.stroke();
+    }
+  } else if (b.type === BUGS.giant) {
+    // the wave-five boss: a beetle the size of your head
+    ctx.fillStyle = "#241a10";
+    ctx.beginPath(); ctx.ellipse(0, 0, s, s * 0.74, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#3d2c17";
+    ctx.beginPath(); ctx.ellipse(-s * 0.12, -s * 0.14, s * 0.78, s * 0.5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "#150f08"; ctx.lineWidth = s * 0.09;
+    ctx.beginPath(); ctx.moveTo(0, -s * 0.7); ctx.lineTo(0, s * 0.7); ctx.stroke();
+    // horn and jaws
+    ctx.fillStyle = "#161009";
+    ctx.beginPath();
+    ctx.moveTo(s * 0.85, -s * 0.1); ctx.lineTo(s * 1.5, -s * 0.42);
+    ctx.lineTo(s * 1.36, -s * 0.05); ctx.closePath(); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(s * 0.85, s * 0.16); ctx.lineTo(s * 1.44, s * 0.4);
+    ctx.lineTo(s * 1.3, s * 0.06); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = "#150f08"; ctx.lineWidth = s * 0.13;
+    for (let i = -1; i <= 1; i++) {
+      ctx.beginPath(); ctx.moveTo(i * s * 0.42, s * 0.5); ctx.lineTo(i * s * 0.55, s * 1.0); ctx.stroke();
+    }
+    ctx.fillStyle = "#d24a2a";
+    ctx.beginPath(); ctx.arc(s * 0.62, -s * 0.28, s * 0.11, 0, Math.PI * 2); ctx.fill();
+  } else if (b.type === BUGS.beetle) {
+    ctx.fillStyle = "#2c3b22";
+    ctx.beginPath(); ctx.ellipse(0, 0, s, s * 0.72, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,.18)";
+    ctx.beginPath(); ctx.ellipse(-s * 0.3, -s * 0.28, s * 0.34, s * 0.2, -0.4, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "#1a2415"; ctx.lineWidth = s * 0.1;
+    ctx.beginPath(); ctx.moveTo(0, -s * 0.7); ctx.lineTo(0, s * 0.7); ctx.stroke();
+  } else {
+    // fly and moth, both with beating wings
+    const flap = Math.abs(Math.sin(time * (b.type === BUGS.fly ? 26 : 13) + b.phase));
+    ctx.fillStyle = b.type === BUGS.moth ? "rgba(238, 226, 196, .85)" : "rgba(210, 232, 245, .7)";
+    for (const side of [-1, 1]) {
+      ctx.save();
+      ctx.translate(0, -s * 0.15);
+      ctx.rotate(side * (0.5 + flap * 0.6));
+      ctx.beginPath();
+      ctx.ellipse(side * s * 0.75, -s * 0.2, s * 0.8, s * 0.34, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+    ctx.fillStyle = b.type === BUGS.moth ? "#7d6a4c" : "#2d3540";
+    ctx.beginPath(); ctx.ellipse(0, 0, s * 0.62, s * 0.42, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#c0392b";
+    ctx.beginPath(); ctx.arc(s * 0.5, -s * 0.12, s * 0.16, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
+}
+
+// the tongue or tentacle shooting out, drawn for a moment after you use it
+function drawPowerFx() {
+  if (!powerFx.length) return;
+  const t = trapPoint();
+  for (const f of powerFx) {
+    const a = Math.max(0, f.life / 0.4);
+    ctx.strokeStyle = "rgba(214, 74, 104, " + a + ")";
+    ctx.lineWidth = 9 * a + 2;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(t.x, t.y);
+    ctx.quadraticCurveTo((t.x + f.x) / 2, (t.y + f.y) / 2 - 30 * a, f.x, f.y);
+    ctx.stroke();
+    ctx.fillStyle = "rgba(255, 190, 205, " + a + ")";
+    ctx.beginPath();
+    ctx.arc(f.x, f.y, 7 * a + 2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+// how much of the boss is left
+function drawWalls() {
+  for (const w of walls) {
+    if (w.hp <= 0) continue;
+    const x = wallX(w);
+    const h = WALL_TOP * grown * (0.45 + 0.55 * (w.hp / w.max));
+    const wide = 17 * grown;
+
+    const g = ctx.createLinearGradient(x - wide, 0, x + wide, 0);
+    g.addColorStop(0, "#2c6430");
+    g.addColorStop(0.5, "#519a42");
+    g.addColorStop(1, "#27582a");
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(x - wide, GROUND + 6);
+    ctx.quadraticCurveTo(x - wide * 1.3, GROUND - h * 0.6, x, GROUND - h);
+    ctx.quadraticCurveTo(x + wide * 1.3, GROUND - h * 0.6, x + wide, GROUND + 6);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.strokeStyle = "rgba(18, 56, 22, .5)";
+    ctx.lineWidth = 3 * grown;
+    ctx.beginPath();
+    ctx.moveTo(x, GROUND);
+    ctx.lineTo(x, GROUND - h * 0.88);
+    ctx.stroke();
+  }
+}
+
+function drawRoots(time) {
+  for (const r of roots) {
+    const rx = BASE_X + r.ox * grown;
+    const ready = r.cool <= 0;
+    const strike = Math.max(0, r.fx / 0.3);
+
+    // where the tip is: resting low, or thrown out at whatever it just caught
+    const restX = rx + Math.sin(time * 1.4 + r.ox) * 8;
+    const restY = GROUND - 34 * grown;
+    const tipX = restX + (r.tx - restX) * strike;
+    const tipY = restY + (r.ty - restY) * strike;
+
+    ctx.strokeStyle = ready ? "rgba(126, 96, 56, .95)" : "rgba(96, 78, 54, .55)";
+    ctx.lineWidth = 9 * grown;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(rx, GROUND + 6);
+    ctx.quadraticCurveTo(rx + (tipX - rx) * 0.3, GROUND - 40 * grown, tipX, tipY);
+    ctx.stroke();
+
+    // a little hooked tip
+    ctx.fillStyle = ready ? "#8a6a3e" : "rgba(120, 98, 68, .6)";
+    ctx.beginPath();
+    ctx.arc(tipX, tipY, 6 * grown, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function drawBossBar() {
+  if (!boss || bugs.indexOf(boss) === -1) return;
+  const full = BUGS.giant.tough + (wave / 5 - 1) * 3;
+  const w = 110, h = 11, y = boss.y - boss.type.r - 26;
+  ctx.fillStyle = "rgba(10, 24, 14, .6)";
+  roundRect(ctx, boss.x - w / 2, y, w, h, 5);
+  ctx.fill();
+  const left = boss.hp / full;
+  ctx.fillStyle = left > 0.5 ? "#e5484d" : left > 0.25 ? "#f5a623" : "#ffe27a";
+  roundRect(ctx, boss.x - w / 2, y, Math.max(6, w * left), h, 5);
+  ctx.fill();
+}
+
+function drawAcid() {
+  for (const a of acids) {
+    ctx.fillStyle = "rgba(150, 210, 70, .9)";
+    ctx.beginPath();
+    ctx.ellipse(a.x, a.y, 9, 7, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "rgba(226, 255, 180, .8)";
+    ctx.beginPath();
+    ctx.arc(a.x - 2.5, a.y - 2.5, 3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function drawBits() {
+  ctx.textAlign = "center";
+  for (const p of bits) {
+    const a = Math.max(0, Math.min(1, p.life));
+    if (p.text) {
+      ctx.font = "bold 26px ui-rounded, 'Avenir Next', system-ui, sans-serif";
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = "rgba(10, 30, 16, " + (a * 0.6) + ")";
+      ctx.strokeText(p.text, p.x, p.y);
+      ctx.fillStyle = "rgba(" + p.colour + ", " + a + ")";
+      ctx.fillText(p.text, p.x, p.y);
+    } else {
+      ctx.fillStyle = "rgba(" + p.colour + ", " + a + ")";
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 3 * a + 1, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  ctx.textAlign = "left";
+}
+
+// how far through digesting, drawn as a ring round the trap
+function drawDigestRing() {
+  if (digesting <= 0) return;
+  const t = trapPoint();
+  const done = 1 - digesting / digestOf;
+  ctx.strokeStyle = "rgba(10, 30, 16, .35)";
+  ctx.lineWidth = 7;
+  ctx.beginPath();
+  ctx.arc(t.x, t.y, reach() * 0.95, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.strokeStyle = "#ffe27a";
+  ctx.beginPath();
+  ctx.arc(t.x, t.y, reach() * 0.95, -Math.PI / 2, -Math.PI / 2 + done * Math.PI * 2);
+  ctx.stroke();
+}
+
+// ---------------------------------------------------------------------------
+// Tapping
+// ---------------------------------------------------------------------------
+cv.addEventListener("pointerdown", e => { e.preventDefault(); springTrap(); });
+cv.addEventListener("contextmenu", e => e.preventDefault());
+window.addEventListener("keydown", e => {
+  if (e.code === "Space") { e.preventDefault(); springTrap(); }
+});
+
+// ---------------------------------------------------------------------------
+// Choosing your plant
+// ---------------------------------------------------------------------------
+const picksEl = document.getElementById("picks");
+const order = ["flytrap", "sundew", "pitcher", "cobra"];
+
+for (const key of order) {
+  const p = PLANTS[key];
+  const wrap = document.createElement("div");
+  wrap.className = "pick";
+  wrap.innerHTML =
+    '<div class="pickName">' + p.name + '</div>' +
+    '<div class="square"><canvas width="300" height="300"></canvas></div>' +
+    '<div class="pickWhat">' + p.hunts + '</div>' +
+    '<div class="pickPlay">' + p.play + '</div>';
+  const c = wrap.querySelector("canvas").getContext("2d");
+  c.save();
+  c.translate(150, 282);
+  const fit = key === "sundew" ? 0.85 : 0.92;
+  c.scale(fit, fit);
+  drawPlant(c, key, 1, 1, 0, false);
+  c.restore();
+  wrap.querySelector(".square").addEventListener("click", () => choosePlant(key));
+  picksEl.appendChild(wrap);
+}
+
+function choosePlant(key) {
+  kind = key;
+  plant = PLANTS[key];
+  grown = 1; level = 0; senses = 0; nectar = 0; soil = 0; soilBank = 0;
+  minerals = 0; caught = 0;
+  for (const k in taken) delete taken[k];
+  bugs.length = 0; bits.length = 0;
+  digesting = 0; shutFor = 0; trapOpen = 1; held = null; heldValue = 0;
+  power = null; powerCool = 0; powerFx.length = 0;
+  acids.length = 0; acidCool = 0;
+  roots = []; rootCool = 5; rootReach = 86;
+  walls = []; ACID_COOL = 1.6;
+  health = MAX_HEALTH; wave = 1; boss = null; dead = false;
+  document.getElementById("powerBtn").hidden = true;
+  document.getElementById("over").hidden = true;
+  spawnIn = 1.2;
+  // Starting a plant clears anything that was left over from a previous go —
+  // an evolve screen still open would leave the whole game paused and dead
+  // still set, and nothing would move.
+  paused = false;
+  document.getElementById("evolve").hidden = true;
+  document.getElementById("help").hidden = true;
+  document.getElementById("choose").hidden = true;
+  started = true;
+  startWave();
+}
+
+// ---------------------------------------------------------------------------
+// Evolving
+// ---------------------------------------------------------------------------
+const evolveEl = document.getElementById("evolve");
+const evolveChoicesEl = document.getElementById("evolveChoices");
+const evolveSubEl = document.getElementById("evolveSub");
+
+// Three ways to go. Growing keeps you as you are but bigger; the other two are
+// the start of the paths towards hunting by sound and hunting on the move.
+// Every evolution belongs to a group, and a group opens up at a certain wave.
+// You start with the plain ones and the strong ones arrive later.
+const OPENS_AT = { 0: 1, 1: 6, 2: 21, 3: 31 };
+
+const PATHS = [
+  // --- from the very start ---
+  { id: "mouth", tier: 0, icon: "\u{1F338}", name: "Wider mouth",
+    what: "A bigger opening without growing the rest of you. Easier to catch things." },
+
+  { id: "nectar", tier: 0, icon: "\u{1F36F}", name: "Sweeter nectar",
+    what: "Beetles and moths turn up instead of ants. Bigger prey, more minerals." },
+
+  { id: "grow", tier: 0, icon: "\u{1F331}", name: "Grow larger",
+    what: "The whole plant swells. A wider trap, and more minerals out of everything you eat." },
+
+  { id: "listen", tier: 0, icon: "\u{1F442}", name: "Sharpen your senses",
+    what: "Your nectar carries further, so twice as many bugs come to you." },
+
+  // --- once you get past wave 5 ---
+  { id: "reflex", tier: 1, icon: "\u{26A1}", name: "Quicker reflexes",
+    what: "Snap at nothing and you are ready again almost instantly." },
+
+  { id: "acid", tier: 1, icon: "\u{1F9EA}", name: "Stronger juices",
+    what: "You get through a meal far faster, so your trap is empty and ready sooner." },
+
+  { id: "tough", tier: 1, icon: "\u{1F6E1}", name: "Tougher leaves",
+    what: "Prey struggles less, so every meal is worth noticeably more." },
+
+  { id: "roots", tier: 1, icon: "\u{1F33F}", name: "Deeper roots",
+    what: "You draw a slow trickle of minerals out of the soil, even while you wait." },
+
+  // --- once you get past wave 20 ---
+  { id: "spit", tier: 2, icon: "\u{1F4A7}", name: "Stronger spit",
+    what: "Your acid is ready again much sooner, so you can keep things off you." },
+
+  { id: "hunt", tier: 2, icon: "\u{1FAB4}", name: "Hunting roots",
+    what: "Five roots come up out of the soil and grab anything that comes near, all on their own. Each one waits five seconds before it can grab again \u2014 and you still get the minerals." },
+
+  // --- once you get past wave 30 ---
+  { id: "walls", tier: 3, icon: "\u{1F6E1}", name: "Leaf walls",
+    what: "Two thick leaves grow into walls either side of you. Anything that crawls has to chew through a wall first, and your hunting roots wait outside them." }
+];
+
+const taken = {};        // how many times you have taken each one
+
+// Your plant's own special. Only ever offered to the plant it belongs to.
+// Once you have the roots, taking them again makes them quicker instead.
+function huntPath() {
+  const base = PATHS.find(p => p.id === "hunt");
+  if (!roots.length) return base;
+  return Object.assign({}, base, {
+    name: "Faster roots",
+    what: "Your five roots grab again after about " +
+          (Math.max(1.6, rootCool * 0.75)).toFixed(1) + " seconds instead of " +
+          rootCool.toFixed(1) + ", and reach a little further."
+  });
+}
+
+function powerPath() {
+  const base = Object.assign({ tier: 2 }, POWERS[kind]);
+  if (!power) return base;
+  return Object.assign({}, base, {
+    tier: 2,
+    name: "Better " + base.name.toLowerCase(),
+    what: "Reaches further, and the wait drops to about " +
+          Math.round(power.cool * 0.75) + " seconds."
+  });
+}
+
+// Four to pick from each time, so no two games grow the same plant.
+function pickFour() {
+  const all = PATHS.filter(p => p.id !== "hunt").concat([huntPath(), powerPath()]);
+  const pool = all.filter(p => wave >= OPENS_AT[p.tier || 0]);
+  const out = [];
+  while (out.length < 4 && pool.length) {
+    out.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
+  }
+  return out;
+}
+
+function openEvolve() {
+  paused = true;
+  const nextOpen = [6, 21, 31].find(w => wave < w);
+  evolveSubEl.textContent = "You have " + minerals + " minerals. Choose what to become." +
+    (nextOpen ? "  New kinds open up at wave " + (nextOpen - 1) + "." : "");
+  evolveChoicesEl.innerHTML = pickFour().map(p =>
+    '<button class="choice" data-path="' + p.id + '">' +
+      '<span class="icon">' + p.icon + '</span>' +
+      '<span class="words"><span class="cName">' + p.name +
+        (taken[p.id] ? ' <span class="times">taken ' + taken[p.id] + '&times;</span>' : '') +
+      '</span>' +
+      '<span class="cWhat">' + p.what + '</span></span>' +
+    '</button>').join("");
+  evolveEl.hidden = false;
+}
+
+evolveEl.addEventListener("click", e => {
+  const hit = e.target.closest("[data-path]");
+  if (!hit) return;
+  const id = hit.getAttribute("data-path");
+  minerals -= nextStep();
+  level++;
+  taken[id] = (taken[id] || 0) + 1;
+
+  if (id === "grow") {
+    // Once you are at full size this still widens your mouth and pays more, so
+    // taking it again is never a wasted choice.
+    growBy(1.16);
+    plant = Object.assign({}, plant, { reach: plant.reach * 1.1, worth: plant.worth * 1.15 });
+  } else if (id === "listen") {
+    senses++;                              // twice as many bugs turn up
+    growBy(1.04);
+  } else if (id === "reflex") {
+    plant = Object.assign({}, plant, { shut: Math.max(0.3, plant.shut * 0.6) });
+  } else if (id === "acid") {
+    plant = Object.assign({}, plant, { digest: Math.max(1.4, plant.digest * 0.72) });
+  } else if (id === "nectar") {
+    nectar++;
+  } else if (id === "mouth") {
+    plant = Object.assign({}, plant, { reach: plant.reach * 1.18 });
+  } else if (id === "power") {
+    if (!power) {
+      power = Object.assign({}, POWERS[kind]);
+    } else {
+      power.cool *= 0.75;
+      power.range *= 1.15;
+    }
+    powerCool = 0;
+  } else if (id === "walls") {
+    if (!walls.length) growWalls();
+    else for (const w of walls) { w.max = Math.round(w.max * 1.4); w.hp = w.max; }
+  } else if (id === "spit") {
+    ACID_COOL = Math.max(0.5, ACID_COOL * 0.72);
+  } else if (id === "hunt") {
+    if (!roots.length) growRoots();
+    else { rootCool = Math.max(1.6, rootCool * 0.75); rootReach *= 1.12; }
+  } else if (id === "roots") {
+    soil++;
+  } else {
+    plant = Object.assign({}, plant, { worth: plant.worth * 1.28 });
+    growBy(1.03);
+  }
+
+  evolveEl.hidden = true;
+  paused = false;
+  const t = trapPoint();
+  puff(t.x, t.y, "150, 230, 140", 16);
+});
+
+// ---------------------------------------------------------------------------
+// Help
+// ---------------------------------------------------------------------------
+const powerBtnEl = document.getElementById("powerBtn");
+powerBtnEl.addEventListener("click", e => { e.stopPropagation(); firePower(); });
+
+const shootBtnEl = document.getElementById("shootBtn");
+shootBtnEl.addEventListener("click", e => { e.stopPropagation(); shootAcid(); });
+
+document.getElementById("overAgain").addEventListener("click", () => {
+  document.getElementById("over").hidden = true;
+  document.getElementById("choose").hidden = false;
+  started = false; dead = false; paused = false;
+});
+
+const helpEl = document.getElementById("help");
+document.getElementById("helpBtn").addEventListener("click", () => {
+  helpEl.hidden = false;
+  paused = true;
+});
+document.getElementById("helpClose").addEventListener("click", () => {
+  helpEl.hidden = true;
+  if (evolveEl.hidden) paused = false;
+});
+
+// ---------------------------------------------------------------------------
+// The words at the top and bottom
+// ---------------------------------------------------------------------------
+const mineralChip = document.getElementById("mineralChip");
+const plantChip = document.getElementById("plantChip");
+const hintText = document.getElementById("hintText");
+
+function updateWords() {
+  const healthChip = document.getElementById("healthChip");
+  healthChip.textContent = "\u{2764} " + Math.max(0, Math.round(health));
+  healthChip.classList.toggle("hurt", health < 40);
+
+  document.getElementById("waveChip").textContent =
+    isBossWave(wave)
+      ? "Wave " + wave + " \u00b7 BOSS"
+      : "Wave " + wave + " \u00b7 " + Math.min(eatenThisWave, waveTarget()) + " of " + waveTarget() + " eaten";
+
+  // spitting acid
+  shootBtnEl.hidden = !started;
+  const acidReady = acidCool <= 0;
+  document.getElementById("shootName").textContent = acidReady ? "Spit acid" : "\u2026";
+  document.getElementById("shootFill").style.width =
+    (acidReady ? 100 : (1 - acidCool / ACID_COOL) * 100) + "%";
+  shootBtnEl.classList.toggle("ready", acidReady);
+
+  // the special power button
+  powerBtnEl.hidden = !power;
+  if (power) {
+    const ready = powerCool <= 0;
+    document.getElementById("powerIcon").textContent = POWERS[kind].icon;
+    document.getElementById("powerName").textContent =
+      ready ? POWERS[kind].name : Math.ceil(powerCool) + "s";
+    document.getElementById("powerFill").style.width =
+      (ready ? 100 : (1 - powerCool / power.cool) * 100) + "%";
+    powerBtnEl.classList.toggle("ready", ready);
+  }
+
+  mineralChip.textContent = "Minerals " + minerals + " / " + nextStep();
+  plantChip.textContent = plant.name + (level > 0 ? " · stage " + (level + 1) : "");
+  hintText.textContent =
+    !started        ? "Pick a plant to begin." :
+    dead            ? "Your plant has wilted." :
+    boss            ? "Spit acid at the giant beetle. It is far too big to eat." :
+    (power && powerCool <= 0) ? "Your " + POWERS[kind].name.toLowerCase() + " is ready. Tap the button to reach out." :
+    digesting > 0   ? "Digesting. You can't catch anything until you're done." :
+    shutFor > 0     ? "Shut. Nothing to do but wait a moment." :
+    plant.sticky    ? "Wait for one to stick to you, then tap to curl up." :
+                      "Tap when a bug is in your trap.";
+}
+
+// ---------------------------------------------------------------------------
+// Put it all together
+// ---------------------------------------------------------------------------
+let last = performance.now();
+
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000);
+  last = now;
+  const time = now / 1000;
+
+  update(dt, time);
+
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  ctx.fillStyle = "#101a12";
+  ctx.fillRect(0, 0, cv.width, cv.height);
+  ctx.setTransform(dpr * scale, 0, 0, dpr * scale, dpr * offX, dpr * offY);
+
+  drawSky(time);
+  drawGround();
+
+  ctx.save();
+  ctx.translate(BASE_X, GROUND);
+  drawPlant(ctx, kind, grown, trapOpen, time, digesting > 0);
+  ctx.restore();
+
+  // Every bug is drawn in front of the plant. They used to go behind it once
+  // they climbed above a certain height, which looked fine on a thin flytrap
+  // stem but made them vanish halfway up a pitcher plant's solid tube.
+  if (walls.length) drawWalls();
+  if (roots.length) drawRoots(time);
+  for (const b of bugs) drawBug(b, time);
+
+  drawPowerFx();
+  drawAcid();
+  drawBossBar();
+  drawDigestRing();
+  drawBits();
+
+  updateWords();
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
