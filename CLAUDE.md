@@ -15,6 +15,32 @@ how the repos fit together — useful context, but not required reading to start
 
 ---
 
+## First: which project?
+
+Before changing anything, be certain which project you are in. Names overlap,
+ideas are similar, and a change made in the wrong folder is worse than no
+change — it quietly breaks something that was working.
+
+If Alan says "make it bigger" or "add a sound" and it is not obvious which
+project is meant, **stop and ask.** List what is there and let Alan pick:
+
+```sh
+ls projects/
+```
+
+Ask when any of these is true:
+
+- There is more than one project it could plausibly be.
+- Two projects have similar names or are about similar things.
+- Alan hasn't named the project in this conversation.
+- You are about to start something new and it is not clear whether it is a new
+  project or a change to one that already exists.
+
+Guessing is not being helpful. One short question costs a few seconds; editing
+the wrong project costs Alan their work.
+
+---
+
 ## Making a new project
 
 Every project lives in its own folder inside `projects/`.
@@ -106,8 +132,31 @@ Small projects don't need it.
 
 ## How it gets published
 
-Alan doesn't have to do anything. When a change lands on the `main` branch,
-GitHub does this by itself:
+### Every change has to be pushed
+
+**Finish a change, then commit it and push it to `main`. Every time.**
+
+```sh
+git add -A
+git commit -m "say what changed"
+git push
+```
+
+This is not tidying up for later — it is the only thing that puts the work on
+the website. A change sitting on the computer uncommitted does not exist as far
+as the site is concerned: Alan will look at their page, see the old version,
+and think it is broken.
+
+So don't leave finished work behind. If Alan asks for three things, push
+after each one rather than saving them all up — small pushes are easier to undo
+if one turns out wrong.
+
+If a change is genuinely half-finished and shouldn't go live yet, say so out
+loud rather than quietly leaving it uncommitted, so Alan knows it is waiting.
+
+### What happens after the push
+
+Once a change lands on the `main` branch, GitHub does this by itself:
 
 1. It looks in `projects/` and finds every folder with a `project.json`.
 2. It copies each project onto the web.
@@ -175,3 +224,5 @@ If a project idea needs any of those to work, it needs a different idea. Say so.
 - [ ] The description is two plain sentences a child would understand
 - [ ] Nothing from the "must never" list above is anywhere in it
 - [ ] It works on a narrow phone-sized window
+- [ ] It went into the project you were actually asked about
+- [ ] It is committed **and pushed** — otherwise it is not on the website
