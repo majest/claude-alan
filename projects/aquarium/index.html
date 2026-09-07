@@ -198,6 +198,7 @@
     background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.12);
   }
   .row .what { font-size: 14px; line-height: 1.35; color: rgba(234, 244, 255, 0.72); }
+  .row .nowAt { font-size: 14px; font-weight: 700; color: #7fe3a0; }
   .mini.pic { object-fit: contain; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.12); }
   .row .equip.take { background: linear-gradient(#8a6bbf, #6a4fa0); }
 
@@ -444,6 +445,25 @@ const PEOPLE = [
 for (const it of PEOPLE) UPGRADES.push(it);
 
 // What level is one of them on?
+// A live reading for each upgrade, so you can watch the number move when you
+// buy one. Without this you were paying and getting no sign anything changed.
+function upgradeNow(id) {
+  const cm = n => Math.round(n * 2 / CM) + " cm";
+  if (id === "cloth")   return "Now " + cm(CLOTH_R) + " across.";
+  if (id === "net")     return "Now " + cm(NET_R) + " across.";
+  if (id === "filter")  return "A bit of dirt every " + Math.round(DIRT_GAP) + " seconds.";
+  if (id === "pay")     return PAY_BONUS ? "+$" + PAY_BONUS + " on every clean." : "No extra yet.";
+  if (id === "seats")   return "Up to " + MAX_WATCHERS + " people can watch.";
+  if (id === "posters") return "Each of them pays $" + TICKET + ".";
+  if (id === "cleaner") return lvl("cleaner")
+    ? "Scoops something every " + Math.round(36 - 2.6 * lvl("cleaner")) + " seconds."
+    : "Nobody hired yet.";
+  if (id === "wiper")   return lvl("wiper")
+    ? "Wipes something every " + Math.round(45 - 3.5 * lvl("wiper")) + " seconds."
+    : "Nobody hired yet.";
+  return "";
+}
+
 function lvl(id) {
   for (const it of UPGRADES) if (it.id === id) return it.level;
   for (const it of PEOPLE)   if (it.id === id) return it.level;
@@ -456,8 +476,11 @@ function applyUpgrades() {
   // A fixed-size cloth would be wider than a whole patch of mould on the big
   // tanks, so the biggest tank would be the easiest one to clean.
   const wide = IN.x1 - IN.x0;
-  CLOTH_R      = (0.053 + 0.0053 * lvl("cloth")) * wide;
-  NET_R        = (0.060 + 0.0053 * lvl("net")) * wide;
+  // Each level adds 15% rather than 10%, so buying one is something you can
+  // actually see and feel. It used to move by about a tenth of a cloth-width,
+  // which was far too small to notice.
+  CLOTH_R      = 0.053 * wide * (1 + 0.15 * lvl("cloth"));
+  NET_R        = 0.060 * wide * (1 + 0.15 * lvl("net"));
   DIRT_GAP     = 45 + 8 * lvl("filter");
   PAY_BONUS    = 5 * lvl("pay");
   MAX_WATCHERS = 3 + lvl("seats");
@@ -605,16 +628,34 @@ const FISH_KINDS = [
     size: [20, 25], speed: [13, 19],
     shell: "#3355a0", shellLow: "#1d3468", claw: "#4a6fc0" },
 
-  { name: "Octopus", price: 500, owned: false, equipped: false, many: 1,
+  { name: "Jellyfish", price: 300, owned: false, equipped: false, many: 5,
+    art: "jelly", move: "pulse",
+    size: [11, 15], speed: [8, 14],
+    bell: "rgba(198, 170, 255, .58)", bellEdge: "rgba(236, 216, 255, .9)",
+    strings: "rgba(214, 190, 255, .72)" },
+
+  { name: "Octopus", price: 750, owned: false, equipped: false, many: 1,
     art: "octopus", move: "drift",
     size: [25, 29], speed: [15, 23],
     skin: "#bb5f88", skinLow: "#77305a" },
 
-  { name: "Deadly Lionfish", price: 1000, owned: false, equipped: false, many: 1,
+  // The heaviest bony fish there is, and shaped like a dinner plate.
+  { name: "Ocean Sunfish", price: 1200, owned: false, equipped: false, many: 3,
+    art: "sunfish", move: "swim",
+    size: [40, 48], speed: [20, 28],
+    top: "#d7dee6", mid: "#9aa7b4", low: "#5d6a78" },
+
+  { name: "Deadly Lionfish", price: 1800, owned: false, equipped: false, many: 1,
     art: "fish", move: "swim", spines: true,
     size: [23, 28], speed: [26, 36], belly: 0.62, stripes: 5, stripe: "#f8efe4",
     top: "#ea7a50", mid: "#c33c20", low: "#7b2415",
-    fin: "rgba(255,226,208,.72)", tail: "rgba(244,186,156,.78)" }
+    fin: "rgba(255,226,208,.72)", tail: "rgba(244,186,156,.78)" },
+
+  // Sits on the bottom pretending to be a rock. The most venomous fish alive.
+  { name: "Stonefish", price: 2600, owned: false, equipped: false, many: 1,
+    art: "stone", move: "crawl",
+    size: [22, 27], speed: [4, 9],
+    top: "#9c8a62", mid: "#6f6144", low: "#43391f" }
 ];
 
 const fish = [];
@@ -976,6 +1017,22 @@ function update(dt, time) {
       f.x = clamp(f.x + fast * f.dir * dt, IN.x0 + edge, IN.x1 - edge);
       f.pitch = 0;
       f.y = sandTopAt(f.x) - f.size * FISH_SCALE * 0.34;
+      continue;
+    }
+
+    if (k.move === "pulse") {
+      // squeeze, rise a little, then sink slowly back down
+      f.turnIn -= dt;
+      if (f.turnIn <= 0) {
+        f.turnIn = rand(3, 6);
+        if (Math.random() < 0.4) f.dir *= -1;
+      }
+      if (chase) f.dir = chase.x >= f.x ? 1 : -1;
+      const beat = Math.sin(time * 1.7 + f.phase);
+      f.pitch = 0;
+      f.x = clamp(f.x + fast * f.dir * dt * 0.7, IN.x0 + edge, IN.x1 - edge);
+      f.y = clamp(f.y + (-Math.max(0, beat) * 26 + 8) * dt,
+                  WATER_TOP + 26 * FISH_SCALE, SAND_TOP - 26 * FISH_SCALE);
       continue;
     }
 
@@ -1497,10 +1554,157 @@ function paintOctopus(c, k, s, wig) {
   c.beginPath(); c.ellipse(s * 0.27, -s * 0.1, s * 0.075, s * 0.1, 0, 0, Math.PI * 2); c.fill();
 }
 
+function paintJelly(c, k, s, wig) {
+  const squash = 1 + wig * 0.16;             // the bell squeezing and letting go
+
+  // the strings trailing underneath
+  c.strokeStyle = k.strings;
+  c.lineCap = "round";
+  c.lineWidth = Math.max(1, s * 0.1);
+  for (let i = 0; i < 6; i++) {
+    const off = (i / 5 - 0.5) * s * 1.05;
+    c.beginPath();
+    c.moveTo(off * 0.55, s * 0.2);
+    c.quadraticCurveTo(off + Math.sin(wig * 2 + i) * s * 0.3, s * 1.1,
+                       off * 1.25 + Math.sin(wig * 2 + i * 1.4) * s * 0.5, s * 2.0);
+    c.stroke();
+  }
+
+  // the bell
+  c.fillStyle = k.bell;
+  c.beginPath();
+  c.ellipse(0, 0, s, s * 0.86 * squash, 0, Math.PI, 0);
+  c.closePath();
+  c.fill();
+
+  // its frilly rim
+  c.strokeStyle = k.bellEdge;
+  c.lineWidth = Math.max(1, s * 0.11);
+  c.beginPath();
+  for (let i = 0; i <= 8; i++) {
+    const x = -s + (i / 8) * s * 2;
+    c.lineTo(x, Math.sin(i * 1.7 + wig * 2) * s * 0.09);
+  }
+  c.stroke();
+
+  // a hint of what is inside
+  c.fillStyle = "rgba(255,255,255,.3)";
+  c.beginPath();
+  c.ellipse(-s * 0.25, -s * 0.3, s * 0.22, s * 0.16, -0.4, 0, Math.PI * 2);
+  c.fill();
+}
+
+// Shaped like a dinner plate stood on its edge, with a stub of a tail.
+function paintSunfish(c, k, s, wig) {
+  c.fillStyle = k.mid;
+
+  // the tall fin on top and the matching one underneath
+  for (const up of [-1, 1]) {
+    c.beginPath();
+    c.moveTo(-s * 0.1, up * s * 0.6);
+    c.quadraticCurveTo(s * 0.02, up * s * 1.75, -s * 0.42, up * s * 1.8);
+    c.quadraticCurveTo(-s * 0.5, up * s * 1.0, -s * 0.62, up * s * 0.5);
+    c.closePath();
+    c.fill();
+  }
+
+  // the stubby rudder at the back
+  c.beginPath();
+  c.moveTo(-s * 0.68, -s * 0.6);
+  c.quadraticCurveTo(-s * 1.08, -s * 0.2 + wig * s * 0.08, -s * 1.06, 0);
+  c.quadraticCurveTo(-s * 1.08, s * 0.2 + wig * s * 0.08, -s * 0.68, s * 0.6);
+  c.closePath();
+  c.fill();
+
+  // the great flat body
+  const g = c.createLinearGradient(0, -s * 0.9, 0, s * 0.9);
+  g.addColorStop(0, k.top);
+  g.addColorStop(0.5, k.mid);
+  g.addColorStop(1, k.low);
+  c.fillStyle = g;
+  c.beginPath();
+  c.ellipse(0, 0, s * 0.8, s * 0.95, 0, 0, Math.PI * 2);
+  c.fill();
+
+  // the little side fin
+  c.fillStyle = "rgba(255,255,255,.18)";
+  c.beginPath();
+  c.ellipse(s * 0.1, s * 0.15, s * 0.26, s * 0.13, 0.4 + wig * 0.15, 0, Math.PI * 2);
+  c.fill();
+
+  // eye, and the small round mouth
+  c.fillStyle = "#fff";
+  c.beginPath(); c.arc(s * 0.46, -s * 0.24, s * 0.13, 0, Math.PI * 2); c.fill();
+  c.fillStyle = "#1a2029";
+  c.beginPath(); c.arc(s * 0.5, -s * 0.24, s * 0.065, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.ellipse(s * 0.76, s * 0.02, s * 0.07, s * 0.09, 0, 0, Math.PI * 2); c.fill();
+}
+
+// Lumpy, warty, and doing its best to look like a rock.
+function paintStone(c, k, s, wig) {
+  // the venomous spines along its back
+  c.strokeStyle = k.low;
+  c.lineCap = "round";
+  c.lineWidth = Math.max(1.4, s * 0.08);
+  for (let i = -2; i <= 2; i++) {
+    c.beginPath();
+    c.moveTo(i * s * 0.26, -s * 0.32);
+    c.lineTo(i * s * 0.3, -s * 0.72 - Math.abs(i) * s * 0.04);
+    c.stroke();
+  }
+
+  // the body, low and lumpy
+  const g = c.createLinearGradient(0, -s * 0.5, 0, s * 0.45);
+  g.addColorStop(0, k.top);
+  g.addColorStop(0.55, k.mid);
+  g.addColorStop(1, k.low);
+  c.fillStyle = g;
+  c.beginPath();
+  c.moveTo(-s * 0.95, s * 0.34);
+  c.quadraticCurveTo(-s * 0.8, -s * 0.32, -s * 0.2, -s * 0.4);
+  c.quadraticCurveTo(s * 0.42, -s * 0.5, s * 0.9, -s * 0.05);
+  c.quadraticCurveTo(s * 1.0, s * 0.3, s * 0.5, s * 0.38);
+  c.closePath();
+  c.fill();
+
+  // warts
+  c.fillStyle = "rgba(255,255,255,.12)";
+  for (let i = 0; i < 7; i++) {
+    const wx = -s * 0.7 + i * s * 0.24;
+    c.beginPath();
+    c.ellipse(wx, -s * 0.1 + Math.sin(i * 2.1) * s * 0.16, s * 0.11, s * 0.07, 0, 0, Math.PI * 2);
+    c.fill();
+  }
+  c.fillStyle = "rgba(0,0,0,.2)";
+  for (let i = 0; i < 5; i++) {
+    const wx = -s * 0.5 + i * s * 0.3;
+    c.beginPath();
+    c.arc(wx, s * 0.12 + Math.sin(i * 3) * s * 0.08, s * 0.07, 0, Math.PI * 2);
+    c.fill();
+  }
+
+  // the wide, turned-up mouth
+  c.strokeStyle = k.low;
+  c.lineWidth = Math.max(1.4, s * 0.09);
+  c.beginPath();
+  c.moveTo(s * 0.42, s * 0.18);
+  c.quadraticCurveTo(s * 0.72, s * 0.02, s * 0.9, s * 0.1);
+  c.stroke();
+
+  // a bulging eye on top
+  c.fillStyle = "#e8dcc0";
+  c.beginPath(); c.arc(s * 0.44, -s * 0.28, s * 0.12, 0, Math.PI * 2); c.fill();
+  c.fillStyle = "#14100a";
+  c.beginPath(); c.arc(s * 0.46, -s * 0.28, s * 0.06, 0, Math.PI * 2); c.fill();
+}
+
 // Draws whichever kind of creature this is, and marks it if it is poorly.
 function paintCreature(c, k, s, wig, ill) {
   if (k.art === "lobster") paintLobster(c, k, s, wig);
   else if (k.art === "octopus") paintOctopus(c, k, s, wig);
+  else if (k.art === "jelly") paintJelly(c, k, s, wig);
+  else if (k.art === "sunfish") paintSunfish(c, k, s, wig);
+  else if (k.art === "stone") paintStone(c, k, s, wig);
   else paintFish(c, k, s, wig);
 
   if (ill) {
@@ -1518,8 +1722,8 @@ function drawFish(f, time) {
   const wig = Math.sin(time * (k.art === "fish" ? 7 : 3) + f.phase);
   ctx.save();
   ctx.translate(f.x, f.y);
-  if (k.art === "octopus") {
-    ctx.scale(f.dir, 1);              // an octopus stays the right way up
+  if (k.art === "octopus" || k.art === "jelly") {
+    ctx.scale(f.dir, 1);              // these two stay the right way up
   } else {
     ctx.rotate(f.dir === 1 ? f.pitch : -f.pitch);
     ctx.scale(f.dir, 1);
@@ -2173,6 +2377,7 @@ function levelRow(it, key, i) {
     '<div class="words">' +
       '<div class="state">' + it.name + '</div>' +
       '<div class="what">' + it.what + '</div>' +
+      '<div class="nowAt">' + upgradeNow(it.id) + '</div>' +
       (maxed
         ? '<div class="equipped">Level ' + it.max + ' &middot; fully upgraded</div>'
         : '<div class="price">Level ' + it.level + ' of ' + it.max + ' &middot; $' + price + '</div>' +
