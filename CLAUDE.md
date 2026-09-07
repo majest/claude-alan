@@ -9,6 +9,10 @@ All the projects: **https://majest.github.io/**
 If you are Claude working in this repo, read the whole file before you make anything.
 If you are Alan — hello! You can read this too. It says how everything works.
 
+Everything needed to build a project is in this file. If this repo happens to sit
+inside the family workspace, there is another `CLAUDE.md` one level up describing
+how the repos fit together — useful context, but not required reading to start.
+
 ---
 
 ## Making a new project
@@ -115,6 +119,34 @@ It takes about a minute. Then the project is live at
 
 The `.github/` folder is what does all this. **Don't edit anything in `.github/`.**
 If publishing breaks, tell Artur — it isn't something to fix from inside a project.
+
+---
+
+## Using AI in a project
+
+Alan might want a project that uses AI — a model that draws pictures, writes
+words, or recognises what something is. That is possible, but it works
+differently from everything else here, and the difference matters.
+
+**The published page never talks to a server.** It has to keep working on a
+phone, at a friend's house, on a school computer, and in ten years' time. A
+page that phones home is broken for everyone except the person who built it.
+
+So AI work happens somewhere else, ahead of time, and only the **result** comes
+back into the project as an ordinary file:
+
+- pictures a model drew once, saved as images
+- words or level data generated once, saved as a `.json` file
+- a small model converted to run inside the browser itself, so the page does the
+  thinking on its own with no server anywhere
+
+There is a machine at home set up to do that work. How to reach it and how to
+use it are in the workspace notes on the family computer — deliberately not in
+this repo, which is public. A Claude session working in the family workspace
+will already have them.
+
+If you are working from a clone somewhere else, that machine is not there. Say
+so plainly rather than inventing a substitute or pointing the page at a server.
 
 ---
 
