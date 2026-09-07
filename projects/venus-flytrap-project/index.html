@@ -676,7 +676,11 @@ const FOG_FAR = 46;
 
 function project(px, py, pz) {
   const dx = px - cam.x, dy = py - cam.y, dz = pz - cam.z;
-  const cy = Math.cos(-cam.yaw), sy = Math.sin(-cam.yaw);
+  // The turn has to be the same way round as the camera's facing, not the
+  // opposite. With the minus sign here the whole view was mirrored: turning
+  // right swung the world right as well, and the cross in the middle no longer
+  // pointed at what you were actually facing.
+  const cy = Math.cos(cam.yaw), sy = Math.sin(cam.yaw);
   let x = dx * cy - dz * sy;
   let z = dx * sy + dz * cy;
   const cp = Math.cos(-cam.pitch), sp = Math.sin(-cam.pitch);
