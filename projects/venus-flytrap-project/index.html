@@ -1,0 +1,1502 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Venus Flytrap Project</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #000; }
+  body {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    -webkit-user-select: none; user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: none;
+  }
+  canvas { display: block; width: 100%; height: 100%; }
+</style>
+
+<canvas id="screen"></canvas>
+
+<script>
+// ---------------------------------------------------------------------------
+// Everything is drawn in made-up units, 1000 across and 700 down, then scaled
+// to whatever screen it is on.
+// ---------------------------------------------------------------------------
+const WW = 1000, WH = 700;
+
+const RED = "#ff2a24";
+const GREEN = "#2bff55";
+
+const cv = document.getElementById("screen");
+const ctx = cv.getContext("2d");
+let scale = 1, offX = 0, offY = 0, dpr = 1;
+
+function resize() {
+  dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const w = window.innerWidth, h = window.innerHeight;
+  cv.width = Math.round(w * dpr);
+  cv.height = Math.round(h * dpr);
+  scale = Math.min(w / WW, h / WH);
+  offX = (w - WW * scale) / 2;
+  offY = (h - WH * scale) / 2;
+}
+window.addEventListener("resize", resize);
+resize();
+
+// ---------------------------------------------------------------------------
+// What is happening: the title screen, or the recording
+// ---------------------------------------------------------------------------
+let mode = "title";          // "title" or "playing"
+let side = null;             // "evolved" or "exterminators"
+let hover = null;            // which box the mouse is over
+let mouse = { x: -999, y: -999 };
+
+function toWorld(e) {
+  const r = cv.getBoundingClientRect();
+  return {
+    x: (e.clientX - r.left - offX) / scale,
+    y: (e.clientY - r.top - offY) / scale
+  };
+}
+
+// ---------------------------------------------------------------------------
+// The two boxes
+// ---------------------------------------------------------------------------
+const BOX_W = 290, BOX_H = 380, BOX_Y = 252;
+const LEFT  = { x: 500 - 34 - BOX_W, y: BOX_Y, w: BOX_W, h: BOX_H, colour: GREEN };
+const RIGHT = { x: 500 + 34,         y: BOX_Y, w: BOX_W, h: BOX_H, colour: RED };
+
+// ---------------------------------------------------------------------------
+// A Venus flytrap trap, seen face on. Used for the creature's head and for the
+// little ones on the ends of its claws.
+// ---------------------------------------------------------------------------
+function trapFront(c, r, open, colour) {
+  for (const side of [-1, 1]) {
+    c.save();
+    c.rotate(side * open);
+    c.fillStyle = colour;
+    c.beginPath();
+    c.ellipse(side * r * 0.48, -r * 0.02, r * 0.66, r * 0.92, side * 0.16, 0, Math.PI * 2);
+    c.fill();
+
+    // teeth all round the outer rim
+    c.strokeStyle = colour;
+    c.lineWidth = Math.max(1.8, r * 0.11);
+    c.lineCap = "round";
+    for (let i = -3; i <= 3; i++) {
+      const a2 = i * 0.33;
+      const ox = side * r * 0.5 + Math.sin(a2) * r * 0.58;
+      const oy = -r * 0.05 - Math.cos(a2) * r * 1.0;
+      c.beginPath();
+      c.moveTo(ox, oy);
+      c.lineTo(ox + side * r * 0.34 + Math.sin(a2) * r * 0.3, oy - r * 0.6);
+      c.stroke();
+    }
+    c.restore();
+  }
+  // the dark line where the two halves meet
+  c.fillStyle = "#000";
+  c.beginPath();
+  c.ellipse(0, -r * 0.05, r * 0.14, r * 0.78, 0, 0, Math.PI * 2);
+  c.fill();
+}
+
+// The same trap from the side: two halves hinged at the stalk, gaping open.
+function trapSide(c, r, open, colour) {
+  for (const side of [-1, 1]) {
+    c.save();
+    c.rotate(side * (0.3 + open * 0.7));
+    c.fillStyle = colour;
+    c.beginPath();
+    c.ellipse(r * 0.68, 0, r * 0.7, r * 0.44, 0, 0, Math.PI * 2);
+    c.fill();
+
+    c.strokeStyle = colour;
+    c.lineWidth = Math.max(1.2, r * 0.11);
+    c.lineCap = "round";
+    for (let i = 0; i < 5; i++) {
+      const x = r * 0.28 + i * r * 0.3;
+      const up = Math.sqrt(Math.max(0, 1 - Math.pow((x - r * 0.68) / (r * 0.7), 2))) * r * 0.44;
+      c.beginPath();
+      c.moveTo(x, -up);
+      c.lineTo(x + r * 0.1, -up - r * 0.34);
+      c.stroke();
+    }
+    c.restore();
+  }
+  // the hinge
+  c.fillStyle = colour;
+  c.beginPath();
+  c.arc(0, 0, r * 0.2, 0, Math.PI * 2);
+  c.fill();
+}
+
+// A long leaf, waving two or three times along its length. A bezier can only
+// bend once, so this walks along the leaf adding a wave sideways instead. The
+// wave is squeezed to nothing at both ends so the leaf still meets the body at
+// one end and the trap at the other. Returns the angle it arrives at.
+function wavyLeaf(c, x1, y1, x2, y2, waves, amp, phase, wide, colour) {
+  const dx = x2 - x1, dy = y2 - y1;
+  const len = Math.hypot(dx, dy) || 1;
+  const nx = -dy / len, ny = dx / len;
+  const N = 20;
+  let lastX = x1, lastY = y1, prevX = x1, prevY = y1;
+
+  c.strokeStyle = colour;
+  c.lineWidth = wide;
+  c.lineCap = "round";
+  c.lineJoin = "round";
+  c.beginPath();
+  for (let i = 0; i <= N; i++) {
+    const f = i / N;
+    const off = Math.sin(f * Math.PI * waves + phase) * amp * Math.sin(f * Math.PI);
+    const px = x1 + dx * f + nx * off;
+    const py = y1 + dy * f + ny * off;
+    if (i === 0) c.moveTo(px, py);
+    else c.lineTo(px, py);
+    prevX = lastX; prevY = lastY;
+    lastX = px; lastY = py;
+  }
+  c.stroke();
+  return Math.atan2(lastY - prevY, lastX - prevX);
+}
+
+// Each leaf on its back gets its own wave, worked out once when the page loads
+// so it stays put instead of wriggling about every frame.
+const BACK_TRAPS = [
+  { x: -12, y: -268, tx: -96,  ty: -348, r: 20 },
+  { x: -10, y: -244, tx: -114, ty: -300, r: 19 },
+  { x: -8,  y: -220, tx: -122, ty: -232, r: 18 },
+  { x: -6,  y: -196, tx: -112, ty: -158, r: 17 },
+  { x: -4,  y: -174, tx: -90,  ty: -106, r: 15 }
+].map(t => Object.assign({}, t, {
+  waves: 2 + Math.round(Math.random()),          // two or three waves
+  amp: 17 + Math.random() * 20,
+  phase: Math.random() * Math.PI * 2
+}));
+
+const KNEE_LEAF = { waves: 2, amp: 13, phase: Math.random() * 6.28 };
+
+// ---------------------------------------------------------------------------
+// THE EVOLVED — left box, bright green.
+// Body side on, head turned to face out of the screen. Long limbs, flytrap
+// traps all down its back, a trap for a head, and traps on the claw tips.
+// ---------------------------------------------------------------------------
+function drawEvolved(c, time, plain, walk) {
+  const sway = Math.sin(time * 0.9) * 3;
+  const open = 0.3 + Math.sin(time * 1.3) * 0.06;
+
+  c.strokeStyle = GREEN;
+  c.fillStyle = GREEN;
+  c.lineCap = "round";
+  c.lineJoin = "round";
+
+  // --- traps growing out of its back, each on its own curling leaf ---
+  // The one you play as has none of these, and none on its claws either.
+  if (!plain) for (const t of BACK_TRAPS) {
+    const end = wavyLeaf(c, t.x, t.y, t.tx + sway, t.ty,
+                         t.waves, t.amp, t.phase + time * 0.35, 6, GREEN);
+    c.save();
+    c.translate(t.tx + sway, t.ty);
+    c.rotate(end);
+    trapSide(c, t.r, open, GREEN);
+    c.restore();
+  }
+
+  // --- legs: human shaped, but very long. The far one is set back behind it,
+  // the near one forward, so it stands instead of looking glued together. ---
+  const w = walk || 0;
+  const legs = [
+    { back: true,  hip: [-6, -190], knee: [-32, -110], ank: [-62, -16], toe: -1, ph: 0 },
+    { back: false, hip: [14, -190], knee: [ 42, -106], ank: [ 22, -16], toe:  1, ph: Math.PI }
+  ];
+  for (const leg of legs) {
+    c.globalAlpha = leg.back ? 0.5 : 1;
+    // the swing of the walk: the foot goes forward and lifts, the knee follows
+    const swing = Math.sin(w + leg.ph);
+    const lift = Math.max(0, Math.sin(w + leg.ph)) * 13;
+    const kneeX = leg.knee[0] + swing * 15;
+    const kneeY = leg.knee[1] - lift * 0.5;
+    const ankX = leg.ank[0] + swing * 33;
+    const ankY = leg.ank[1] - lift;
+
+    c.lineWidth = 15;
+    c.beginPath();
+    c.moveTo(leg.hip[0], leg.hip[1]);
+    c.lineTo(kneeX, kneeY);
+    c.lineTo(ankX, ankY);
+    c.stroke();
+
+    // a trap on the knee
+    c.save();
+    c.translate(kneeX + leg.toe * 4, kneeY);
+    c.rotate(leg.toe > 0 ? -0.3 : Math.PI + 0.3);
+    trapSide(c, 15, open, GREEN);
+    c.restore();
+
+    // and one hanging under the knee on a long leaf
+    const hangX = kneeX + leg.toe * 24 + sway * 0.5;
+    const kneeEnd = wavyLeaf(c, kneeX, kneeY + 8, hangX, kneeY + 78,
+                             KNEE_LEAF.waves, KNEE_LEAF.amp,
+                             KNEE_LEAF.phase + time * 0.3, 5, GREEN);
+    c.save();
+    c.translate(hangX, kneeY + 78);
+    c.rotate(kneeEnd);
+    trapSide(c, 13, open, GREEN);
+    c.restore();
+
+    // three long stiff toes, like claws, pointing the way that foot faces
+    c.lineWidth = 7;
+    for (let t = 0; t < 3; t++) {
+      c.beginPath();
+      c.moveTo(ankX, ankY);
+      c.lineTo(ankX + leg.toe * (24 + t * 14), ankY + 10 + t * 3);
+      c.stroke();
+    }
+    c.beginPath();
+    c.moveTo(ankX, ankY);
+    c.lineTo(ankX - leg.toe * 22, ankY + 12);
+    c.stroke();
+  }
+  c.globalAlpha = 1;
+
+  // --- body ---
+  c.lineWidth = 26;
+  c.beginPath();
+  c.moveTo(4, -188);
+  c.quadraticCurveTo(-4, -244, 12, -288);
+  c.stroke();
+
+  // --- arms: very long, with a small trap on every claw tip ---
+  for (const arm of [{ back: true, dx: -14 }, { back: false, dx: 10 }]) {
+    c.globalAlpha = arm.back ? 0.45 : 1;
+    const shX = 10 + arm.dx, shY = -284;
+    const elX = 56 + arm.dx, elY = -214;
+    const wrX = 46 + arm.dx, wrY = -126;
+
+    c.lineWidth = 12;
+    c.beginPath();
+    c.moveTo(shX, shY);
+    c.lineTo(elX, elY);
+    c.lineTo(wrX, wrY);
+    c.stroke();
+
+    for (let f = 0; f < 4; f++) {
+      const a2 = -0.4 + f * 0.32;
+      const tipX = wrX + Math.sin(a2) * 66;
+      const tipY = wrY + Math.cos(a2) * 62;
+      c.lineWidth = 6;                       // the claw
+      c.beginPath();
+      c.moveTo(wrX, wrY);
+      c.lineTo(tipX, tipY);
+      c.stroke();
+      if (!plain) {
+        c.save();
+        c.translate(tipX, tipY);
+        c.rotate(a2 + 1.5);
+        trapSide(c, 11, open, GREEN);        // wider than the claw it sits on
+        c.restore();
+      }
+    }
+  }
+  c.globalAlpha = 1;
+
+  // --- the head: one trap, turned to face straight out of the box ---
+  c.lineWidth = 11;
+  c.beginPath();
+  c.moveTo(12, -288);
+  c.lineTo(22, -318);
+  c.stroke();
+  c.save();
+  c.translate(22, -322);
+  trapFront(c, 42, 0.2 + open * 0.35, GREEN);
+  c.restore();
+}
+
+// ---------------------------------------------------------------------------
+// THE EXTERMINATOR — right box, bright red.
+// Upper half of a person in a gas mask with two cylinders and black eyes,
+// holding a flamethrower in each hand, both angled up and outward, both lit.
+// ---------------------------------------------------------------------------
+function flamethrower(c, time, seed) {
+  // drawn pointing straight up; whoever calls this rotates it
+  c.fillStyle = RED;
+  c.strokeStyle = RED;
+
+  c.fillRect(-9, -2, 18, 28);                 // grip
+  c.beginPath();                              // fuel body
+  c.moveTo(-15, 6);
+  c.quadraticCurveTo(-17, -30, -10, -38);
+  c.lineTo(10, -38);
+  c.quadraticCurveTo(17, -30, 15, 6);
+  c.closePath();
+  c.fill();
+
+  c.fillStyle = "#000";                       // a band across the tank
+  c.fillRect(-15, -18, 30, 5);
+  c.fillRect(-15, -6, 30, 5);
+  c.fillStyle = RED;
+
+  c.lineWidth = 10;                           // barrel
+  c.lineCap = "butt";
+  c.beginPath();
+  c.moveTo(0, -36);
+  c.lineTo(0, -86);
+  c.stroke();
+
+  c.fillRect(-12, -98, 24, 14);               // nozzle
+  c.fillStyle = "#000";
+  c.fillRect(-7, -95, 14, 4);
+  c.fillStyle = RED;
+
+  flame(c, 0, -100, time, seed, -seed);       // curls back towards the middle
+}
+
+// ---------------------------------------------------------------------------
+// THE EXTERMINATOR — right box, bright red.
+// No body at all now: just the gas mask, hanging in the middle of the box,
+// with a flamethrower floating either side of it.
+// ---------------------------------------------------------------------------
+function drawExterminator(c, time) {
+  c.lineCap = "round";
+  c.lineJoin = "round";
+
+  // --- a flamethrower either side, not held by anything ---
+  for (const side of [-1, 1]) {
+    c.save();
+    c.translate(side * 64, 30);
+    c.rotate(side * 0.42);
+    flamethrower(c, time, side);
+    c.restore();
+  }
+
+  gasMask(c, time);
+}
+
+// ---------------------------------------------------------------------------
+// The mask, close up. Black is where the red shell is cut away.
+// ---------------------------------------------------------------------------
+function gasMask(c, time) {
+  c.save();
+  c.translate(0, -6);
+
+  // --- head straps going off behind ---
+  c.strokeStyle = RED;
+  c.lineWidth = 9;
+  for (const side of [-1, 1]) {
+    c.beginPath();
+    c.moveTo(side * 48, -44);
+    c.quadraticCurveTo(side * 92, -50, side * 104, -18);
+    c.stroke();
+    c.beginPath();
+    c.moveTo(side * 50, -14);
+    c.quadraticCurveTo(side * 94, -12, side * 102, 20);
+    c.stroke();
+    // buckles
+    c.fillStyle = RED;
+    c.fillRect(side * 76 - 7, -50, 14, 13);
+    c.fillStyle = "#000";
+    c.fillRect(side * 76 - 3, -47, 6, 7);
+    c.fillStyle = RED;
+  }
+
+  // --- the shell of the mask ---
+  c.fillStyle = RED;
+  c.beginPath();
+  c.moveTo(-52, -34);
+  c.quadraticCurveTo(-58, -84, 0, -92);       // forehead
+  c.quadraticCurveTo(58, -84, 52, -34);
+  c.quadraticCurveTo(50, 18, 26, 46);         // cheek down to the muzzle
+  c.quadraticCurveTo(0, 66, -26, 46);
+  c.quadraticCurveTo(-50, 18, -52, -34);
+  c.closePath();
+  c.fill();
+
+  // the seal line just inside the rim
+  c.strokeStyle = "#000";
+  c.lineWidth = 2.5;
+  c.beginPath();
+  c.moveTo(-44, -34);
+  c.quadraticCurveTo(-49, -76, 0, -83);
+  c.quadraticCurveTo(49, -76, 44, -34);
+  c.quadraticCurveTo(42, 14, 22, 38);
+  c.quadraticCurveTo(0, 56, -22, 38);
+  c.quadraticCurveTo(-42, 14, -44, -34);
+  c.closePath();
+  c.stroke();
+
+  // rivets round the edge
+  c.fillStyle = "#000";
+  for (let i = 0; i < 14; i++) {
+    const a = -Math.PI * 0.94 + (i / 13) * Math.PI * 1.88;
+    c.beginPath();
+    c.arc(Math.sin(a) * 47, -26 - Math.cos(a) * 50, 2.4, 0, Math.PI * 2);
+    c.fill();
+  }
+
+  // --- the two eye lenses ---
+  for (const side of [-1, 1]) {
+    c.fillStyle = "#000";                     // the dark glass
+    c.beginPath();
+    c.arc(side * 24, -44, 19, 0, Math.PI * 2);
+    c.fill();
+    c.strokeStyle = RED;                      // the ring holding it in
+    c.lineWidth = 4;
+    c.beginPath();
+    c.arc(side * 24, -44, 21.5, 0, Math.PI * 2);
+    c.stroke();
+    c.fillStyle = "rgba(255,120,110,.55)";    // a glint of light
+    c.beginPath();
+    c.ellipse(side * 24 - 7, -51, 6, 4, -0.6, 0, Math.PI * 2);
+    c.fill();
+  }
+
+  // --- the grille you breathe out through ---
+  c.fillStyle = "#000";
+  c.beginPath();
+  c.ellipse(0, 22, 19, 15, 0, 0, Math.PI * 2);
+  c.fill();
+  c.fillStyle = RED;
+  for (let i = -1; i <= 1; i++) {
+    c.fillRect(-14, 16 + i * 8, 28, 3.5);
+  }
+  c.strokeStyle = RED;
+  c.lineWidth = 3;
+  c.beginPath();
+  c.ellipse(0, 22, 21, 17, 0, 0, Math.PI * 2);
+  c.stroke();
+
+  // --- the two cylinders, one on each cheek ---
+  for (const side of [-1, 1]) {
+    c.save();
+    c.translate(side * 44, 6);
+    c.rotate(side * 0.42);
+
+    c.fillStyle = RED;
+    c.beginPath();
+    c.moveTo(-15, -14);
+    c.lineTo(15, -14);
+    c.quadraticCurveTo(18, 42, 0, 48);
+    c.quadraticCurveTo(-18, 42, -15, -14);
+    c.closePath();
+    c.fill();
+
+    c.fillStyle = "#000";                     // ribs down the canister
+    c.fillRect(-12, -4, 24, 4);
+    c.fillRect(-12, 8, 24, 4);
+    c.fillRect(-12, 20, 24, 4);
+    c.beginPath();                            // the hole in the end
+    c.ellipse(0, 40, 7, 4, 0, 0, Math.PI * 2);
+    c.fill();
+
+    c.strokeStyle = RED;                      // the collar joining it on
+    c.lineWidth = 6;
+    c.beginPath();
+    c.moveTo(-14, -18);
+    c.lineTo(14, -18);
+    c.stroke();
+    c.restore();
+  }
+  c.restore();
+}
+
+// One tongue of flame. Pinched at the bottom with the corners hooking inward,
+// fattest about a third of the way up, and breaking into three licking tips.
+// bend is which way it curls over as it rises.
+function flameTongue(c, len, wide, bend, t, seed, colour) {
+  // the line the flame follows as it curls over
+  const cx = f => bend * len * 0.46 * f * f + Math.sin(f * 3.4 + t * 4 + seed) * len * 0.05;
+  const cy = f => -len * f;
+  // how wide it is at each height: fattest at about four tenths up, nothing at the top
+  const hw = f => wide * Math.max(0, 1 - Math.pow(Math.abs(f - 0.4) / 0.62, 1.7));
+  // little ripples along the edges
+  const lick = (f, sd) => Math.sin(f * 11 + t * 6 + sd) * wide * 0.17;
+
+  c.fillStyle = colour;
+  c.beginPath();
+
+  // bottom left corner, hooking inward
+  c.moveTo(cx(0) - hw(0) * 0.34, 2);
+  c.quadraticCurveTo(cx(0) - hw(0) * 1.08, -len * 0.03, cx(0.1) - hw(0.1), cy(0.1));
+
+  // up the left edge
+  for (let i = 2; i <= 7; i++) {
+    const f = i / 10;
+    c.lineTo(cx(f) - hw(f) - lick(f, seed), cy(f));
+  }
+
+  // three tips of different heights, with notches cut between them
+  const tipA = 0.94 + Math.sin(t * 5 + seed) * 0.08;
+  const tipB = 1.07 + Math.sin(t * 4.3 + seed + 2) * 0.09;
+  const tipC = 0.9 + Math.sin(t * 5.6 + seed + 4) * 0.08;
+  c.lineTo(cx(0.84) - hw(0.84) * 0.9, cy(0.84));
+  c.lineTo(cx(tipA) - hw(0.8) * 0.52, cy(tipA));
+  c.lineTo(cx(0.8) - hw(0.8) * 0.12, cy(0.8));
+  c.lineTo(cx(tipB), cy(tipB));
+  c.lineTo(cx(0.82) + hw(0.8) * 0.14, cy(0.82));
+  c.lineTo(cx(tipC) + hw(0.8) * 0.52, cy(tipC));
+  c.lineTo(cx(0.84) + hw(0.84) * 0.9, cy(0.84));
+
+  // back down the right edge
+  for (let i = 7; i >= 2; i--) {
+    const f = i / 10;
+    c.lineTo(cx(f) + hw(f) + lick(f, seed + 1.7), cy(f));
+  }
+
+  // bottom right corner, hooking inward
+  c.quadraticCurveTo(cx(0) + hw(0) * 1.08, -len * 0.03, cx(0) + hw(0) * 0.34, 2);
+  c.closePath();
+  c.fill();
+}
+
+function flame(c, x, y, t, seed, bend) {
+  c.save();
+  c.translate(x, y);
+  const layers = [
+    { col: "#ff2a24", w: 28, len: 118 },
+    { col: "#ff5a2a", w: 21, len: 96 },
+    { col: "#ff9a3c", w: 14, len: 72 },
+    { col: "#ffd873", w: 8,  len: 44 }
+  ];
+  for (let i = 0; i < layers.length; i++) {
+    const L = layers[i];
+    flameTongue(c, L.len + Math.sin(t * 6 + i * 1.3 + seed) * 13,
+                L.w, bend, t + i * 0.8, seed + i, L.col);
+  }
+  c.restore();
+}
+
+// ---------------------------------------------------------------------------
+// The title, red on the left running to green on the right
+// ---------------------------------------------------------------------------
+function drawTitle() {
+  const text = "THE VENUS FLYTRAP PROJECT";
+  ctx.font = "bold 46px ui-monospace, 'SF Mono', Menlo, Consolas, monospace";
+  ctx.textAlign = "center";
+  const wide = ctx.measureText(text).width;
+
+  const g = ctx.createLinearGradient(500 - wide / 2, 0, 500 + wide / 2, 0);
+  g.addColorStop(0, RED);
+  g.addColorStop(1, GREEN);
+  ctx.fillStyle = g;
+  ctx.fillText(text, 500, 146);
+  ctx.textAlign = "left";
+}
+
+// ---------------------------------------------------------------------------
+// Making it look like footage off a camera
+// ---------------------------------------------------------------------------
+let startedAt = 0;
+
+function drawRecordingLook(time) {
+  // scan lines
+  ctx.fillStyle = "rgba(255,255,255,.035)";
+  for (let y = 0; y < WH; y += 4) ctx.fillRect(0, y, WW, 1);
+
+  // grain
+  ctx.fillStyle = "rgba(255,255,255,.05)";
+  for (let i = 0; i < 260; i++) {
+    ctx.fillRect((Math.random() * WW) | 0, (Math.random() * WH) | 0, 2, 2);
+  }
+
+  // a band of brightness rolling slowly down the picture
+  const bandY = ((time * 60) % (WH + 200)) - 100;
+  const band = ctx.createLinearGradient(0, bandY - 60, 0, bandY + 60);
+  band.addColorStop(0, "rgba(255,255,255,0)");
+  band.addColorStop(0.5, "rgba(255,255,255,.045)");
+  band.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = band;
+  ctx.fillRect(0, bandY - 60, WW, 120);
+
+  // dark corners
+  const vig = ctx.createRadialGradient(500, 350, 200, 500, 350, 620);
+  vig.addColorStop(0, "rgba(0,0,0,0)");
+  vig.addColorStop(1, "rgba(0,0,0,.75)");
+  ctx.fillStyle = vig;
+  ctx.fillRect(0, 0, WW, WH);
+
+  // corner brackets, like a viewfinder
+  ctx.strokeStyle = "rgba(255,255,255,.35)";
+  ctx.lineWidth = 2;
+  const m = 34, len = 30;
+  for (const [cx, cy, sx, sy] of [[m, m, 1, 1], [WW - m, m, -1, 1], [m, WH - m, 1, -1], [WW - m, WH - m, -1, -1]]) {
+    ctx.beginPath();
+    ctx.moveTo(cx + sx * len, cy);
+    ctx.lineTo(cx, cy);
+    ctx.lineTo(cx, cy + sy * len);
+    ctx.stroke();
+  }
+
+  // REC, blinking
+  ctx.font = "bold 19px ui-monospace, Menlo, monospace";
+  if ((time % 1.6) < 1.05) {
+    ctx.fillStyle = "#ff2a24";
+    ctx.beginPath();
+    ctx.arc(58, 62, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillText("REC", 74, 69);
+  }
+
+  // running time, top right
+  const secs = time;
+  const mm = String(Math.floor(secs / 60) % 60).padStart(2, "0");
+  const ss = String(Math.floor(secs) % 60).padStart(2, "0");
+  const ff = String(Math.floor((secs % 1) * 25)).padStart(2, "0");
+  ctx.fillStyle = "rgba(255,255,255,.72)";
+  ctx.textAlign = "right";
+  ctx.fillText("00:" + mm + ":" + ss + ":" + ff, WW - 58, 69);
+  ctx.textAlign = "left";
+}
+
+// ===========================================================================
+// THE RECORDING — the game itself, in 3D
+// ===========================================================================
+// There is no 3D engine here. The maths is written out below: every point in
+// the world is moved relative to the camera, turned by how the camera is
+// facing, and then divided by its distance to work out where it lands on the
+// screen. Things far away go dark, which is what makes it feel like footage.
+// ---------------------------------------------------------------------------
+// You are down there on the ground; the camera floats about a metre above your
+// head and a little way behind, looking slightly down at you.
+const player = { x: 0, z: 0, yaw: 0 };
+const CAM_UP = 3.4;        // about a metre above your head
+const CAM_BACK = 7.2;      // far enough back to actually see you
+const CAM_TILT = 0.2;      // looking slightly down at you (positive tilts down)
+
+const cam = { x: 0, y: CAM_UP, z: -CAM_BACK, yaw: 0, pitch: CAM_TILT };
+
+function placeCamera() {
+  cam.yaw = player.yaw;
+  cam.pitch = CAM_TILT;
+  cam.y = CAM_UP;
+  cam.x = player.x - Math.sin(player.yaw) * CAM_BACK;
+  cam.z = player.z - Math.cos(player.yaw) * CAM_BACK;
+}
+const FOCAL = 620;
+const FOG_FAR = 46;
+
+function project(px, py, pz) {
+  const dx = px - cam.x, dy = py - cam.y, dz = pz - cam.z;
+  const cy = Math.cos(-cam.yaw), sy = Math.sin(-cam.yaw);
+  let x = dx * cy - dz * sy;
+  let z = dx * sy + dz * cy;
+  const cp = Math.cos(-cam.pitch), sp = Math.sin(-cam.pitch);
+  const y = dy * cp - z * sp;
+  z = dy * sp + z * cp;
+  if (z < 0.2) return null;
+  return { x: 500 + (x / z) * FOCAL, y: 350 - (y / z) * FOCAL, z: z };
+}
+
+function fogAlpha(z) { return Math.max(0, 1 - z / FOG_FAR); }
+
+// --- sprites, drawn once into their own little canvases -------------------
+function makeSprite(w, h, draw) {
+  const c = document.createElement("canvas");
+  c.width = w; c.height = h;
+  draw(c.getContext("2d"));
+  return c;
+}
+
+// a person in a suit with the red mask on
+function drawSuited(c) {
+  c.strokeStyle = "#ff6b52";
+  c.fillStyle = "#ff6b52";
+  c.lineCap = "round";
+  c.lineJoin = "round";
+  c.lineWidth = 15;
+  c.beginPath(); c.moveTo(-16, 0); c.lineTo(-14, -70); c.stroke();   // legs
+  c.beginPath(); c.moveTo(16, 0); c.lineTo(14, -70); c.stroke();
+  c.beginPath();                                                     // body
+  c.moveTo(-26, -66);
+  c.quadraticCurveTo(-30, -132, 0, -140);
+  c.quadraticCurveTo(30, -132, 26, -66);
+  c.closePath();
+  c.fill();
+  c.lineWidth = 13;
+  c.beginPath(); c.moveTo(-24, -126); c.lineTo(-40, -76); c.stroke();  // arms
+  c.beginPath(); c.moveTo(24, -126); c.lineTo(40, -76); c.stroke();
+  c.save();
+  c.translate(0, -168);
+  c.scale(0.42, 0.42);
+  gasMask(c, 0);
+  c.restore();
+}
+
+const SPR = {};
+function buildSprites() {
+  SPR.exterminator = makeSprite(200, 300, c => {
+    c.translate(100, 292);
+    drawSuited(c);
+  });
+  SPR.evolvedWalk = [];
+  SPR.playerWalk = [];
+  for (let i = 0; i < 8; i++) {
+    const ph = (i / 8) * Math.PI * 2;
+    SPR.evolvedWalk.push(makeSprite(300, 300, c => {
+      c.translate(170, 290); c.scale(0.72, 0.72); drawEvolved(c, 0, false, ph);
+    }));
+    SPR.playerWalk.push(makeSprite(240, 300, c => {
+      c.translate(140, 290); c.scale(0.72, 0.72); drawEvolved(c, 0, true, ph);
+    }));
+  }
+  SPR.hut = makeSprite(300, 220, c => {
+    c.translate(150, 214);
+    c.fillStyle = "#3a1512";
+    c.fillRect(-120, -130, 240, 130);           // the hut
+    c.fillStyle = "#5a2018";
+    c.beginPath();                              // roof
+    c.moveTo(-140, -130);
+    c.lineTo(0, -206);
+    c.lineTo(140, -130);
+    c.closePath();
+    c.fill();
+    c.fillStyle = "#ffb64a";                    // a lit doorway
+    c.fillRect(-30, -86, 60, 86);
+    c.fillStyle = "#ff2a24";
+    c.fillRect(-96, -116, 46, 34);              // and a couple of lit windows
+    c.fillRect(50, -116, 46, 34);
+  });
+  SPR.commander = makeSprite(200, 300, c => {
+    c.translate(100, 292);
+    c.strokeStyle = "#ffd0a6";
+    c.fillStyle = "#ffd0a6";
+    c.lineCap = "round";
+    c.lineWidth = 15;
+    c.beginPath(); c.moveTo(-16, 0); c.lineTo(-14, -70); c.stroke();
+    c.beginPath(); c.moveTo(16, 0); c.lineTo(14, -70); c.stroke();
+    c.beginPath();
+    c.moveTo(-28, -66);
+    c.quadraticCurveTo(-32, -134, 0, -142);
+    c.quadraticCurveTo(32, -134, 28, -66);
+    c.closePath();
+    c.fill();
+    c.lineWidth = 13;
+    c.beginPath(); c.moveTo(-26, -128); c.lineTo(-44, -80); c.stroke();
+    c.beginPath(); c.moveTo(26, -128); c.lineTo(44, -80); c.stroke();
+    c.beginPath(); c.arc(0, -166, 26, 0, Math.PI * 2); c.fill();   // head
+    c.fillRect(-34, -196, 68, 16);                                  // cap
+    c.fillRect(-34, -184, 46, 8);
+  });
+  SPR.tree = makeSprite(160, 300, c => {
+    c.translate(80, 296);
+    c.fillStyle = "#0f2a1c";
+    c.fillRect(-9, -110, 18, 110);
+    for (let i = 0; i < 3; i++) {
+      c.beginPath();
+      c.moveTo(0, -300 + i * 62);
+      c.lineTo(-56 + i * 9, -150 + i * 46);
+      c.lineTo(56 - i * 9, -150 + i * 46);
+      c.closePath();
+      c.fill();
+    }
+  });
+}
+
+// --- the base, and the commander standing outside it ----------------------
+const BASE = { x: 0, z: 0 };
+const COMMANDER = { x: 2.4, z: 0.6 };
+
+// What the coins buy. Fire is what the Evolved cannot stand, so everything the
+// scientists came up with is a better way of throwing it.
+const GUNS = [
+  { id: "hot",   name: "Hotter burn",    lvl: 0, base: 3,
+    what: "The flame runs hotter, so they go down faster." },
+  { id: "reach", name: "Longer reach",   lvl: 0, base: 3,
+    what: "Throws the flame two metres further each time." },
+  { id: "wide",  name: "Wider spray",    lvl: 0, base: 4,
+    what: "A broader cone, and it catches one more of them at once." },
+  { id: "bag",   name: "Bigger satchel", lvl: 0, base: 4,
+    what: "Carry two more samples before you have to come back." }
+];
+function gunLvl(id) { for (const g of GUNS) if (g.id === id) return g.lvl; return 0; }
+function gunCost(g) { return g.base + g.lvl * 2; }
+
+function burnDamage() { return 1.8 * (1 + gunLvl("hot") * 0.5); }
+function burnReach()  { return 6 + gunLvl("reach") * 2; }
+function burnAngle()  { return 0.5 + gunLvl("wide") * 0.14; }
+function burnCount()  { return 1 + gunLvl("wide"); }
+function bagSize()    { return 5 + gunLvl("bag") * 2; }
+
+let shopOpen = false;
+
+// --- the trees, scattered once and left there ------------------------------
+const TREES = [];
+for (let i = 0; i < 90; i++) {
+  const a = Math.random() * Math.PI * 2;
+  const d = 8 + Math.random() * 60;
+  TREES.push({ x: Math.cos(a) * d, z: Math.sin(a) * d, h: 5 + Math.random() * 4 });
+}
+
+// Which frame of the walk to show, from how far it has stepped.
+function walkFrame(list, step) {
+  const n = list.length;
+  return list[((Math.floor(step / (Math.PI * 2) * n) % n) + n) % n];
+}
+
+// --- who is out there ------------------------------------------------------
+const foes = [];
+function enemyKind() { return side === "evolved" ? "exterminator" : "evolved"; }
+
+function spawnFoe() {
+  const a = Math.random() * Math.PI * 2;
+  const d = 22 + Math.random() * 16;
+  foes.push({
+    x: player.x + Math.cos(a) * d,
+    z: player.z + Math.sin(a) * d,
+    hp: side === "evolved" ? 1 : 3,      // an Evolved kills with one slash
+    dead: false,
+    fed: 0,                              // how far through feeding / sampling
+    cool: 0,
+    wob: Math.random() * 6.3
+  });
+}
+
+// --- what you are carrying -------------------------------------------------
+let health = 10, maxHealth = 10;
+let samples = 0, coins = 0;              // Exterminator
+let strands = 0, minerals = 0;           // Evolved
+let busyWith = null, busyFor = 0;        // feeding on / sampling a body
+let attackFx = 0, firing = false;
+let message = "", messageFor = 0;
+
+function say(t) { message = t; messageFor = 2.6; }
+
+const keys = {};
+window.addEventListener("keydown", e => {
+  keys[e.code] = true;
+  if (e.code === "Escape") shopOpen = false;
+  if (mode === "playing" && (e.code === "Space" || e.code === "KeyE")) rightClickAction();
+  if (e.code === "Space") e.preventDefault();
+});
+window.addEventListener("keyup", e => { keys[e.code] = false; });
+
+cv.addEventListener("mousemove", e => {
+  if (mode !== "playing") return;
+  if (document.pointerLockElement === cv) {
+    player.yaw += e.movementX * 0.0026;
+  } else {
+    // no pointer lock: remember where the mouse is and turn towards that side
+    mouse = toWorld(e);
+  }
+});
+
+function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
+
+// --- doing something to whatever you are looking at ------------------------
+function nearestInFront(maxDist) {
+  let best = null, bestScore = 1e9;
+  for (const f of foes) {
+    const dx = f.x - player.x, dz = f.z - player.z;
+    const d = Math.hypot(dx, dz);
+    if (d > maxDist) continue;
+    // is it roughly in front of us?
+    const ang = Math.atan2(dx, dz);
+    let off = ang - player.yaw;
+    while (off > Math.PI) off -= Math.PI * 2;
+    while (off < -Math.PI) off += Math.PI * 2;
+    if (Math.abs(off) > 0.55) continue;
+    if (d < bestScore) { bestScore = d; best = f; }
+  }
+  return best;
+}
+
+function nearCommander() {
+  return Math.hypot(COMMANDER.x - player.x, COMMANDER.z - player.z) < 4;
+}
+
+function sellSamples() {
+  if (samples <= 0) { say("Nothing to sell. Bring me samples."); return; }
+  coins += samples;                       // one coin a sample, five for five
+  say("Sold " + samples + ". " + coins + " DNA coins.");
+  samples = 0;
+}
+
+function buyGun(g) {
+  const cost = gunCost(g);
+  if (coins < cost) { say("Not enough DNA coins."); return; }
+  coins -= cost;
+  g.lvl++;
+  say(g.name + " fitted. Now level " + g.lvl + ".");
+}
+
+function rightClickAction() {
+  if (side === "exterminators" && nearCommander()) {
+    sellSamples();
+    shopOpen = true;
+    if (document.pointerLockElement === cv) document.exitPointerLock();
+    return;
+  }
+
+  const f = nearestInFront(3.2);
+  if (!f) { say("Nothing in reach."); return; }
+
+  if (!f.dead) {
+    if (side === "evolved") {
+      attackFx = 0.32;
+      f.hp -= 1;
+      if (f.hp <= 0) { f.dead = true; say("Killed. Right click again to feed."); }
+    } else {
+      say("Burn it first. Hold the left button.");
+    }
+    return;
+  }
+
+  // it is already dead: start feeding on it, or take a sample
+  if (side === "exterminators" && samples >= bagSize()) {
+    say("Satchel full. Get back to the commander.");
+    return;
+  }
+  busyWith = f;
+  busyFor = side === "evolved" ? 3.2 : 1.6;
+}
+
+cv.addEventListener("mousedown", e => {
+  if (mode === "title") {
+    const p = toWorld(e);
+    if (inBox(LEFT, p)) startGame("evolved");
+    else if (inBox(RIGHT, p)) startGame("exterminators");
+    return;
+  }
+  // Nothing below is allowed to depend on the browser granting pointer lock.
+  // It used to, and if it refused, every click just asked for it again and you
+  // could neither turn nor attack.
+  if (shopOpen) {
+    const p = toWorld(e);
+    for (const r of SHOP_ROWS) {
+      if (p.x > r.x && p.x < r.x + r.w && p.y > r.y && p.y < r.y + r.h) { buyGun(r.g); return; }
+    }
+    if (p.x < 160 || p.x > 840 || p.y < 140 || p.y > 570) shopOpen = false;
+    return;
+  }
+  if (e.button === 2) { rightClickAction(); return; }
+  if (e.button === 0) {
+    firing = true;
+    if (document.pointerLockElement !== cv) cv.requestPointerLock();
+  }
+});
+window.addEventListener("mouseup", e => { if (e.button === 0) firing = false; });
+
+cv.addEventListener("mousemove", e => {
+  if (mode !== "title") return;
+  const p = toWorld(e);
+  hover = inBox(LEFT, p) ? LEFT : inBox(RIGHT, p) ? RIGHT : null;
+});
+
+function startGame(which) {
+  side = which;
+  mode = "playing";
+  hover = null;
+  player.x = 0; player.z = -8; player.yaw = 0;   // just outside the base, facing it
+  for (const g of GUNS) g.lvl = 0;
+  shopOpen = false;
+  placeCamera();
+  health = maxHealth = 10;
+  samples = 0; coins = 0; strands = 0; minerals = 0;
+  foes.length = 0;
+  for (let i = 0; i < 7; i++) spawnFoe();
+  say(which === "evolved"
+    ? "You are Evolved. Right click an Exterminator to slash it."
+    : "You are an Exterminator. Hold the left button to burn.");
+}
+
+// --- everything moving -----------------------------------------------------
+function updateGame(dt, time) {
+  // turning: the arrow keys and A/D always work, and if the browser would not
+  // give us pointer lock, moving the mouse to the side of the picture turns too
+  let turn = 0;
+  if (keys.KeyD || keys.ArrowRight) turn += 1;
+  if (keys.KeyA || keys.ArrowLeft) turn -= 1;
+  if (document.pointerLockElement !== cv && mouse.x > -900) {
+    const off = (mouse.x - 500) / 500;            // -1 at the left edge, +1 at the right
+    if (Math.abs(off) > 0.18) turn += off * 1.3;
+  }
+  player.yaw += turn * 2.1 * dt;
+
+  // walking
+  let fwd = 0, strafe = 0;
+  if (keys.KeyW || keys.ArrowUp) fwd += 1;
+  if (keys.KeyS || keys.ArrowDown) fwd -= 1;
+  if (keys.KeyE) strafe += 0;
+  if (keys.KeyQ) strafe -= 1;
+  if (keys.KeyC) strafe += 1;
+  const speed = (side === "evolved" ? 6.2 : 4.6) * dt;
+  const mx = (Math.sin(player.yaw) * fwd + Math.cos(player.yaw) * strafe) * speed;
+  const mz = (Math.cos(player.yaw) * fwd - Math.sin(player.yaw) * strafe) * speed;
+  player.x += mx;
+  player.z += mz;
+  player.step = (player.step || 0) + Math.hypot(mx, mz) * 2.6;
+  placeCamera();
+
+  if (attackFx > 0) attackFx -= dt;
+  if (messageFor > 0) messageFor -= dt;
+
+  // feeding on a body, or taking a sample from one
+  if (busyWith) {
+    if (!foes.includes(busyWith)) { busyWith = null; }
+    else if (Math.hypot(busyWith.x - player.x, busyWith.z - player.z) > 4) {
+      busyWith = null;
+      say("Too far away.");
+    } else {
+      busyFor -= dt;
+      if (busyFor <= 0) {
+        foes.splice(foes.indexOf(busyWith), 1);
+        busyWith = null;
+        if (side === "evolved") {
+          maxHealth += 1;
+          health = Math.min(maxHealth, health + 3);
+          strands += 5;
+          minerals += 4;
+          say("Fed. +1 health, +5 evolution strands.");
+        } else {
+          samples += 1;
+          say(samples >= bagSize()
+              ? "Satchel full. Take them to the commander."
+              : "Sample taken. " + samples + " of " + bagSize() + ".");
+        }
+        spawnFoe();
+      }
+    }
+  }
+
+  // burning things, if you are the one with the flamethrower
+  if (firing && side === "exterminators" && !shopOpen) {
+    // everything the coins bought shows up right here
+    const hit = [];
+    for (const f of foes) {
+      if (f.dead) continue;
+      const dx = f.x - player.x, dz = f.z - player.z;
+      const d = Math.hypot(dx, dz);
+      if (d > burnReach()) continue;
+      let off = Math.atan2(dx, dz) - player.yaw;
+      while (off > Math.PI) off -= Math.PI * 2;
+      while (off < -Math.PI) off += Math.PI * 2;
+      if (Math.abs(off) > burnAngle()) continue;
+      hit.push({ f: f, d: d });
+    }
+    hit.sort((a, b) => a.d - b.d);
+    for (const h of hit.slice(0, burnCount())) {
+      h.f.hp -= dt * burnDamage();
+      if (h.f.hp <= 0) { h.f.dead = true; say("Down. Right click to take a sample."); }
+    }
+  }
+
+  // the other side coming for you
+  for (const f of foes) {
+    if (f.dead) continue;
+    const dx = player.x - f.x, dz = player.z - f.z;
+    const d = Math.hypot(dx, dz) || 1;
+    if (d < 30) {
+      const sp = (enemyKind() === "evolved" ? 3.4 : 2.4) * dt;
+      if (d > 1.6) {
+        f.x += dx / d * sp;
+        f.z += dz / d * sp;
+        f.step = (f.step || 0) + sp * 2.6;
+      }
+      f.cool -= dt;
+      if (f.fx > 0) f.fx -= dt;
+      if (d < 3 && f.cool <= 0) {
+        f.cool = 1.5;
+        f.fx = 0.5;                    // so you can see it happen
+        health -= enemyKind() === "evolved" ? 2 : 1.4;
+        if (health <= 0) {
+          health = 0;
+          say("You were killed. Back to the title.");
+          setTimeout(() => { mode = "title"; side = null; }, 1200);
+        }
+      }
+    }
+  }
+
+  while (foes.length < 7) spawnFoe();
+  // face the way you are walking, so you are not moonwalking about
+  for (const f of foes) f.face = Math.atan2(player.x - f.x, player.z - f.z);
+}
+
+// --- drawing the world -----------------------------------------------------
+function drawWorld(time) {
+  // the ground, everything below the horizon
+  const far = project(cam.x + Math.sin(cam.yaw) * 4000, 0, cam.z + Math.cos(cam.yaw) * 4000);
+  const horizon = far ? far.y : 350;
+  const g = ctx.createLinearGradient(0, horizon, 0, WH);
+  g.addColorStop(0, "#04160c");
+  g.addColorStop(1, "#0d2a16");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, Math.max(0, horizon), WW, WH);
+
+  // lines on the ground, so you can tell you are moving
+  ctx.lineWidth = 1.4;
+  const step = 8, reach = 48;
+  const bx = Math.round(cam.x / step) * step, bz = Math.round(cam.z / step) * step;
+  for (let i = -6; i <= 6; i++) {
+    for (const along of [true, false]) {
+      ctx.beginPath();
+      let drawing = false;
+      for (let j = -6; j <= 6; j++) {
+        const px = along ? bx + i * step : bx + j * step;
+        const pz = along ? bz + j * step : bz + i * step;
+        const p = project(px, 0, pz);
+        if (!p) { drawing = false; continue; }
+        if (!drawing) { ctx.moveTo(p.x, p.y); drawing = true; }
+        else ctx.lineTo(p.x, p.y);
+      }
+      ctx.strokeStyle = "rgba(90, 200, 130, .16)";
+      ctx.stroke();
+    }
+  }
+
+  // everything standing up, furthest away first
+  const things = [];
+  for (const t of TREES) things.push({ x: t.x, z: t.z, h: t.h, spr: SPR.tree, foe: null });
+  things.push({ x: BASE.x, z: BASE.z, h: 4.4, spr: SPR.hut, foe: null });
+  things.push({ x: COMMANDER.x, z: COMMANDER.z, h: 2.1, spr: SPR.commander, foe: null });
+  things.push({
+    x: player.x, z: player.z,
+    h: side === "evolved" ? 2.6 : 2.0,
+    spr: side === "evolved"
+      ? walkFrame(SPR.playerWalk, player.step || 0)
+      : SPR.exterminator,
+    foe: null, me: true
+  });
+  for (const f of foes) {
+    things.push({
+      x: f.x, z: f.z,
+      h: enemyKind() === "evolved" ? 2.6 : 2.0,
+      spr: enemyKind() === "evolved"
+        ? walkFrame(SPR.evolvedWalk, f.step || 0)
+        : SPR.exterminator,
+      foe: f
+    });
+  }
+  things.sort((a, b) =>
+    Math.hypot(b.x - cam.x, b.z - cam.z) - Math.hypot(a.x - cam.x, a.z - cam.z));
+
+  for (const t of things) {
+    const base = project(t.x, 0, t.z);
+    const top = project(t.x, t.h, t.z);
+    if (!base || !top) continue;
+    const h = base.y - top.y;
+    if (h < 3 || h > 3000) continue;
+    const w = h * (t.spr.width / t.spr.height);
+    const a = fogAlpha(base.z);
+    if (a <= 0.02) continue;
+
+    ctx.save();
+    ctx.globalAlpha = a;
+    if (t.foe && t.foe.dead) {
+      // a body on the ground: laid flat
+      ctx.translate(base.x, base.y);
+      ctx.rotate(1.5);
+      ctx.drawImage(t.spr, -h * 0.5, -w * 0.5, h, w);
+    } else {
+      ctx.drawImage(t.spr, base.x - w / 2, top.y, w, h);
+    }
+    ctx.restore();
+  }
+}
+
+// --- what your attack looks like, out in the world -------------------------
+// The camera is behind you now, so these are drawn where they happen rather
+// than stuck to the bottom of the screen.
+function drawEffects(time) {
+  const ahead = side === "evolved" ? 1.9 : 2.6;
+  const wx = player.x + Math.sin(player.yaw) * ahead;
+  const wz = player.z + Math.cos(player.yaw) * ahead;
+
+  if (side === "evolved" && attackFx > 0) {
+    const p = project(wx, 1.2, wz);
+    if (!p) return;
+    const sz = FOCAL / p.z;
+    const fade = attackFx / 0.32;
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.globalAlpha = fade;
+    ctx.strokeStyle = "#b6ffcb";
+    ctx.lineCap = "round";
+    for (let i = -1; i <= 1; i++) {
+      ctx.lineWidth = sz * 0.06;
+      ctx.beginPath();
+      ctx.arc(i * sz * 0.16, 0, sz * (0.55 - Math.abs(i) * 0.08),
+              -1.5 + (1 - fade) * 1.4, 0.4 + (1 - fade) * 1.4);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // the other side attacking you, drawn where it happens
+  for (const f of foes) {
+    if (f.dead || !f.fx || f.fx <= 0) continue;
+    const towards = Math.atan2(player.x - f.x, player.z - f.z);
+    const p = project(f.x + Math.sin(towards) * 1.2, 1.3, f.z + Math.cos(towards) * 1.2);
+    if (!p) continue;
+    const sz = FOCAL / p.z;
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.globalAlpha = Math.min(1, f.fx * 2.4);
+    if (enemyKind() === "exterminator") {
+      // they only let the flame go when they are right on top of you
+      ctx.scale(sz * 0.012, sz * 0.012);
+      flame(ctx, 0, 0, time, 2, 0);
+    } else {
+      ctx.strokeStyle = "#b6ffcb";
+      ctx.lineWidth = sz * 0.05;
+      ctx.lineCap = "round";
+      for (let i = -1; i <= 1; i++) {
+        ctx.beginPath();
+        ctx.arc(i * sz * 0.13, 0, sz * 0.4, -1.2, 0.6);
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+
+  if (side === "exterminators" && firing) {
+    const p = project(wx, 1.3, wz);
+    if (!p) return;
+    const sz = (FOCAL / p.z) * 0.016;
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.scale(sz, sz);
+    // the flame is drawn pointing up its own way, which on screen is straight
+    // away from you — so it needs no turning at all
+    flame(ctx, 0, 0, time, 1, 0);
+    ctx.restore();
+  }
+}
+
+// --- the numbers on the picture -------------------------------------------
+function drawHud() {
+  ctx.font = "bold 20px ui-monospace, Menlo, monospace";
+  ctx.fillStyle = side === "evolved" ? GREEN : RED;
+  ctx.fillText(side === "evolved" ? "THE EVOLVED" : "THE EXTERMINATORS", 58, 108);
+
+  // health
+  ctx.fillStyle = "rgba(255,255,255,.25)";
+  ctx.fillRect(58, 122, 220, 14);
+  ctx.fillStyle = health > maxHealth * 0.35 ? "#3ddc84" : "#ff4d3d";
+  ctx.fillRect(58, 122, 220 * Math.max(0, health / maxHealth), 14);
+  ctx.fillStyle = "rgba(255,255,255,.8)";
+  ctx.font = "bold 17px ui-monospace, Menlo, monospace";
+  ctx.fillText("HEALTH " + Math.ceil(health) + "/" + maxHealth, 58, 156);
+
+  if (side === "evolved") {
+    ctx.fillText("EVOLUTION STRANDS  " + strands + " / 100", 58, 182);
+    ctx.fillText("MINERALS  " + minerals, 58, 206);
+  } else {
+    ctx.fillText("SAMPLES  " + samples + " / " + bagSize(), 58, 182);
+    ctx.fillText("DNA COINS  " + coins, 58, 206);
+  }
+
+  // what you are doing right now
+  if (busyWith) {
+    const total = side === "evolved" ? 3.2 : 1.6;
+    const done = 1 - busyFor / total;
+    ctx.fillStyle = "rgba(255,255,255,.25)";
+    ctx.fillRect(370, 560, 260, 16);
+    ctx.fillStyle = side === "evolved" ? GREEN : RED;
+    ctx.fillRect(370, 560, 260 * done, 16);
+    ctx.fillStyle = "rgba(255,255,255,.9)";
+    ctx.textAlign = "center";
+    ctx.fillText(side === "evolved" ? "FEEDING" : "TAKING SAMPLE", 500, 552);
+    ctx.textAlign = "left";
+  }
+
+  if (messageFor > 0) {
+    ctx.textAlign = "center";
+    ctx.fillStyle = "rgba(255,255,255,.85)";
+    ctx.fillText(message, 500, 620);
+    ctx.textAlign = "left";
+  }
+
+  // an arrow home when you are carrying samples
+  if (side === "exterminators" && samples > 0 && !nearCommander()) {
+    const dx = COMMANDER.x - player.x, dz = COMMANDER.z - player.z;
+    const away = Math.hypot(dx, dz);
+    let off = Math.atan2(dx, dz) - player.yaw;
+    while (off > Math.PI) off -= Math.PI * 2;
+    while (off < -Math.PI) off += Math.PI * 2;
+    ctx.save();
+    ctx.translate(500, 250);
+    ctx.rotate(off);
+    ctx.fillStyle = "rgba(255, 210, 120, .85)";
+    ctx.beginPath();
+    ctx.moveTo(0, -22); ctx.lineTo(13, 10); ctx.lineTo(0, 3); ctx.lineTo(-13, 10);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+    ctx.textAlign = "center";
+    ctx.fillStyle = "rgba(255,210,120,.8)";
+    ctx.fillText("BASE " + Math.round(away) + "m", 500, 292);
+    ctx.textAlign = "left";
+  }
+
+  if (side === "exterminators" && nearCommander() && !shopOpen) {
+    ctx.textAlign = "center";
+    ctx.fillStyle = "rgba(255,210,120,.9)";
+    ctx.fillText("RIGHT CLICK THE COMMANDER", 500, 300);
+    ctx.textAlign = "left";
+  }
+
+  // the cross in the middle
+  ctx.strokeStyle = "rgba(255,255,255,.5)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(492, 350); ctx.lineTo(508, 350);
+  ctx.moveTo(500, 342); ctx.lineTo(500, 358);
+  ctx.stroke();
+
+  if (shopOpen) { drawShop(); return; }
+
+  if (document.pointerLockElement !== cv) {
+    ctx.textAlign = "center";
+    ctx.fillStyle = "rgba(255,255,255,.75)";
+    ctx.fillText("W / S WALK   ·   A / D or MOUSE SIDES TURN   ·   RIGHT CLICK or SPACE TO ACT", 500, 668);
+    ctx.textAlign = "left";
+  }
+}
+
+// --- the commander's table of flamethrower parts --------------------------
+const SHOP_ROWS = [];
+function drawShop() {
+  ctx.fillStyle = "rgba(6, 10, 8, .88)";
+  ctx.fillRect(160, 140, 680, 430);
+  ctx.strokeStyle = RED;
+  ctx.lineWidth = 3;
+  ctx.strokeRect(160, 140, 680, 430);
+
+  ctx.textAlign = "center";
+  ctx.fillStyle = RED;
+  ctx.font = "bold 24px ui-monospace, Menlo, monospace";
+  ctx.fillText("ANTI-EVOLVED FLAMETHROWERS", 500, 182);
+  ctx.font = "bold 16px ui-monospace, Menlo, monospace";
+  ctx.fillStyle = "rgba(255,255,255,.65)";
+  ctx.fillText("Fire is the one thing they cannot stand.", 500, 208);
+  ctx.fillStyle = "#ffd76a";
+  ctx.fillText("DNA COINS  " + coins, 500, 234);
+  ctx.textAlign = "left";
+
+  SHOP_ROWS.length = 0;
+  GUNS.forEach((g, i) => {
+    const y = 260 + i * 68;
+    const cost = gunCost(g);
+    const can = coins >= cost;
+    SHOP_ROWS.push({ x: 186, y: y, w: 628, h: 58, g: g });
+
+    ctx.fillStyle = can ? "rgba(255,255,255,.07)" : "rgba(255,255,255,.03)";
+    ctx.fillRect(186, y, 628, 58);
+    ctx.strokeStyle = can ? "rgba(255,120,90,.6)" : "rgba(255,255,255,.12)";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(186, y, 628, 58);
+
+    ctx.fillStyle = can ? "#fff" : "rgba(255,255,255,.45)";
+    ctx.font = "bold 18px ui-monospace, Menlo, monospace";
+    ctx.fillText(g.name + (g.lvl ? "  ·  level " + g.lvl : ""), 204, y + 25);
+    ctx.font = "15px ui-monospace, Menlo, monospace";
+    ctx.fillStyle = "rgba(255,255,255,.55)";
+    ctx.fillText(g.what, 204, y + 46);
+
+    ctx.textAlign = "right";
+    ctx.font = "bold 19px ui-monospace, Menlo, monospace";
+    ctx.fillStyle = can ? "#ffd76a" : "rgba(255,255,255,.35)";
+    ctx.fillText(cost + " coins", 796, y + 36);
+    ctx.textAlign = "left";
+  });
+
+  ctx.textAlign = "center";
+  ctx.fillStyle = "rgba(255,255,255,.7)";
+  ctx.font = "bold 16px ui-monospace, Menlo, monospace";
+  ctx.fillText("CLICK ONE TO FIT IT   ·   PRESS ESC OR CLICK OUTSIDE TO GO BACK", 500, 552);
+  ctx.textAlign = "left";
+}
+
+// ---------------------------------------------------------------------------
+// Put it together
+// ---------------------------------------------------------------------------
+// A box grows while the mouse is on it, and snaps straight back when it leaves.
+const HOVER_GROW = 1.1;
+function boxScale(b) { return hover === b ? HOVER_GROW : 1; }
+
+function inBox(b, p) {
+  const g = boxScale(b);
+  const cx = b.x + b.w / 2, cy = b.y + b.h / 2;
+  return Math.abs(p.x - cx) < b.w * g / 2 && Math.abs(p.y - cy) < b.h * g / 2;
+}
+
+function box(b) {
+  ctx.save();
+  ctx.strokeStyle = b.colour;
+  ctx.globalAlpha = 0.16;
+  ctx.lineWidth = 12;
+  ctx.strokeRect(b.x, b.y, b.w, b.h);
+  ctx.restore();
+
+  ctx.strokeStyle = b.colour;
+  ctx.lineWidth = hover === b ? 4 : 3;
+  ctx.strokeRect(b.x, b.y, b.w, b.h);
+}
+
+// One box with its figure inside. The whole thing grows while the mouse is on
+// it and snaps straight back the moment it leaves — no easing, as asked.
+function drawPanel(b, time, who) {
+  const g = boxScale(b);
+  const cx = b.x + b.w / 2, cy = b.y + b.h / 2;
+
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.scale(g, g);
+  ctx.translate(-cx, -cy);
+
+  box(b);
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(b.x, b.y, b.w, b.h);
+  ctx.clip();
+  if (who === "evolved") {
+    ctx.translate(b.x + b.w * 0.48, b.y + b.h - 28);
+    ctx.scale(0.93, 0.93);
+    drawEvolved(ctx, time);
+  } else {
+    ctx.translate(b.x + b.w / 2, b.y + b.h / 2 + 14);
+    ctx.scale(0.94, 0.94);
+    drawExterminator(ctx, time);
+  }
+  ctx.restore();
+  ctx.restore();
+}
+
+function frame(now) {
+  if (!startedAt) startedAt = now;
+  const time = (now - startedAt) / 1000;
+  const dt = Math.min(0.05, (now - lastFrame) / 1000);
+  lastFrame = now;
+
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = "#000";
+  ctx.fillRect(0, 0, cv.width, cv.height);
+  ctx.setTransform(dpr * scale, 0, 0, dpr * scale, dpr * offX, dpr * offY);
+
+  if (mode === "title") {
+    drawTitle();
+    // the one being hovered is drawn last, so it sits over the other
+    if (hover === LEFT) {
+      drawPanel(RIGHT, time, "exterminators");
+      drawPanel(LEFT, time, "evolved");
+    } else {
+      drawPanel(LEFT, time, "evolved");
+      drawPanel(RIGHT, time, "exterminators");
+    }
+  } else {
+    updateGame(dt, time);
+    drawWorld(time);
+    drawEffects(time);
+    drawHud();
+  }
+
+  drawRecordingLook(time);
+  requestAnimationFrame(frame);
+}
+
+let lastFrame = performance.now();
+cv.addEventListener("contextmenu", e => e.preventDefault());
+buildSprites();
+requestAnimationFrame(frame);
+</script>
