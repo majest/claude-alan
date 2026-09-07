@@ -658,16 +658,18 @@ function drawRecordingLook(time) {
 // You are down there on the ground; the camera floats about a metre above your
 // head and a little way behind, looking slightly down at you.
 const player = { x: 0, z: 0, yaw: 0 };
-const CAM_UP = 3.4;        // about a metre above your head
+const CAM_ABOVE_HEAD = 1;  // exactly a metre above the top of your head
 const CAM_BACK = 7.2;      // far enough back to actually see you
 const CAM_TILT = 0.2;      // looking slightly down at you (positive tilts down)
 
-const cam = { x: 0, y: CAM_UP, z: -CAM_BACK, yaw: 0, pitch: CAM_TILT };
+const cam = { x: 0, y: 3.6, z: -CAM_BACK, yaw: 0, pitch: CAM_TILT };
+
+function playerHeight() { return side === "evolved" ? 2.6 : 2.0; }
 
 function placeCamera() {
   cam.yaw = player.yaw;
   cam.pitch = CAM_TILT;
-  cam.y = CAM_UP;
+  cam.y = playerHeight() + CAM_ABOVE_HEAD;
   cam.x = player.x - Math.sin(player.yaw) * CAM_BACK;
   cam.z = player.z - Math.cos(player.yaw) * CAM_BACK;
 }
@@ -698,6 +700,133 @@ function makeSprite(w, h, draw) {
   c.width = w; c.height = h;
   draw(c.getContext("2d"));
   return c;
+}
+
+// You are seen from behind, because the camera sits behind you. Drawn facing
+// away, so when you turn, your character turns with the world instead of
+// staying stuck at the same angle like a cardboard cut-out.
+function drawEvolvedBack(c, walk) {
+  const w = walk || 0;
+  c.strokeStyle = GREEN;
+  c.fillStyle = GREEN;
+  c.lineCap = "round";
+  c.lineJoin = "round";
+
+  for (const leg of [{ x: -24, ph: 0 }, { x: 24, ph: Math.PI }]) {
+    const swing = Math.sin(w + leg.ph);
+    const lift = Math.max(0, Math.sin(w + leg.ph)) * 14;
+    c.lineWidth = 15;
+    c.beginPath();
+    c.moveTo(leg.x, -190);
+    c.lineTo(leg.x + swing * 9, -104 - lift * 0.5);
+    c.lineTo(leg.x + swing * 18, -16 - lift);
+    c.stroke();
+    c.lineWidth = 7;
+    for (let t = -1; t <= 1; t++) {
+      c.beginPath();
+      c.moveTo(leg.x + swing * 18, -16 - lift);
+      c.lineTo(leg.x + swing * 18 + t * 19, -2 - lift);
+      c.stroke();
+    }
+  }
+
+  c.lineWidth = 30;
+  c.beginPath();
+  c.moveTo(0, -186);
+  c.lineTo(0, -286);
+  c.stroke();
+
+  // the long arms, one either side, with the claws hanging off them
+  for (const side2 of [-1, 1]) {
+    const sway = Math.sin(w + (side2 > 0 ? 0 : Math.PI)) * 7;
+    c.lineWidth = 12;
+    c.beginPath();
+    c.moveTo(side2 * 20, -282);
+    c.lineTo(side2 * 46, -210 + sway);
+    c.lineTo(side2 * 38, -126 + sway);
+    c.stroke();
+    c.lineWidth = 6;
+    for (let f = -1; f <= 2; f++) {
+      c.beginPath();
+      c.moveTo(side2 * 38, -126 + sway);
+      c.lineTo(side2 * 38 + f * 15, -64 + sway);
+      c.stroke();
+    }
+  }
+
+  // the trap it has for a head, seen from the back
+  c.lineWidth = 11;
+  c.beginPath();
+  c.moveTo(0, -286);
+  c.lineTo(0, -310);
+  c.stroke();
+  c.fillStyle = GREEN;
+  c.beginPath();
+  c.ellipse(0, -336, 35, 31, 0, 0, Math.PI * 2);
+  c.fill();
+  c.strokeStyle = "#0a2a11";
+  c.lineWidth = 5;
+  c.beginPath();
+  c.moveTo(0, -366);
+  c.lineTo(0, -306);
+  c.stroke();
+}
+
+function drawSuitedBack(c, walk) {
+  const w = walk || 0;
+  c.strokeStyle = "#ff6b52";
+  c.fillStyle = "#ff6b52";
+  c.lineCap = "round";
+  c.lineJoin = "round";
+
+  for (const leg of [{ x: -16, ph: 0 }, { x: 16, ph: Math.PI }]) {
+    const swing = Math.sin(w + leg.ph);
+    c.lineWidth = 15;
+    c.beginPath();
+    c.moveTo(leg.x, -70);
+    c.lineTo(leg.x + swing * 11, 0);
+    c.stroke();
+  }
+
+  c.beginPath();
+  c.moveTo(-26, -66);
+  c.quadraticCurveTo(-30, -132, 0, -140);
+  c.quadraticCurveTo(30, -132, 26, -66);
+  c.closePath();
+  c.fill();
+
+  // the fuel tank strapped to their back
+  c.fillStyle = "#c9432f";
+  c.beginPath();
+  c.moveTo(-21, -126);
+  c.lineTo(21, -126);
+  c.quadraticCurveTo(25, -74, 0, -70);
+  c.quadraticCurveTo(-25, -74, -21, -126);
+  c.closePath();
+  c.fill();
+  c.fillStyle = "#000";
+  c.fillRect(-17, -112, 34, 5);
+  c.fillRect(-17, -97, 34, 5);
+
+  c.strokeStyle = "#ff6b52";
+  c.lineWidth = 13;
+  for (const side2 of [-1, 1]) {
+    const sway = Math.sin(w + (side2 > 0 ? Math.PI : 0)) * 9;
+    c.beginPath();
+    c.moveTo(side2 * 24, -126);
+    c.lineTo(side2 * 37, -76 + sway);
+    c.stroke();
+  }
+
+  // the back of the head, with the mask straps across it
+  c.fillStyle = "#ff6b52";
+  c.beginPath();
+  c.arc(0, -162, 25, 0, Math.PI * 2);
+  c.fill();
+  c.strokeStyle = "#000";
+  c.lineWidth = 4;
+  c.beginPath(); c.moveTo(-23, -171); c.lineTo(23, -171); c.stroke();
+  c.beginPath(); c.moveTo(-23, -156); c.lineTo(23, -156); c.stroke();
 }
 
 // a person in a suit with the red mask on
@@ -739,7 +868,11 @@ function buildSprites() {
       c.translate(170, 290); c.scale(0.72, 0.72); drawEvolved(c, 0, false, ph);
     }));
     SPR.playerWalk.push(makeSprite(240, 300, c => {
-      c.translate(140, 290); c.scale(0.72, 0.72); drawEvolved(c, 0, true, ph);
+      c.translate(120, 290); c.scale(0.72, 0.72); drawEvolvedBack(c, ph);
+    }));
+    SPR.suitedWalk = SPR.suitedWalk || [];
+    SPR.suitedWalk.push(makeSprite(160, 300, c => {
+      c.translate(80, 292); drawSuitedBack(c, ph);
     }));
   }
   SPR.hut = makeSprite(300, 220, c => {
@@ -1157,7 +1290,7 @@ function drawWorld(time) {
     h: side === "evolved" ? 2.6 : 2.0,
     spr: side === "evolved"
       ? walkFrame(SPR.playerWalk, player.step || 0)
-      : SPR.exterminator,
+      : walkFrame(SPR.suitedWalk, player.step || 0),
     foe: null, me: true
   });
   for (const f of foes) {
