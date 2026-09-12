@@ -120,7 +120,7 @@
   /* ---- the picture walls ---- */
   .grid {
     display: grid; gap: 16px;
-    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   }
   .card {
     background: #fff; border: 2px solid #dce8d8; border-radius: 16px;
@@ -166,7 +166,116 @@
 //   care   the four things you need to know, in the order Alan asked for
 // ---------------------------------------------------------------------------
 const PLANTS = [
-  // ---------------------------------------------------- house plants
+  // ======================================================= OUTSIDE PLANTS
+  {
+    id: "sunflower", group: "outside", name: "Sunflower",
+    latin: "Helianthus annuus", draw: "sunflower",
+    water: "Push a finger a couple of centimetres into the soil at the base. Dry means water, and water deeply rather than often, so the roots follow the moisture down and the plant can hold itself up. Moist means leave it. A big sunflower in a pot in July can drink a whole watering can in a day, so check it every morning in hot weather.",
+    light: "Full sun, the more the better — the clue is in the name, and a shaded sunflower grows thin, leans badly and produces a small head. There is no winter dormancy to think about, because a sunflower is an annual: it grows, flowers, sets seed and dies, all in one year.",
+    grow: "You grow more from seed, which is the whole point of them. Leave a head on the plant until the back turns brown and the seeds loosen, then rub them out and keep them somewhere dry and cool. Sow in spring after the last frost. A seedling is flowering and as tall as the parent in about three months, which is faster than almost anything else you can grow.",
+    clean: "Outdoor plants are dusted by the rain, so there is nothing to wipe. Cut the main stem above a node if you want side branches rather than one giant head. Deadhead spent flowers through summer to keep more coming, and stop once autumn arrives if you want to keep the seed — and leave a head or two standing, because birds strip them through winter.",
+    pests: "Slugs and snails will eat a young seedling down to nothing overnight, so protect them early with a barrier or by picking them off after dark. Blackfly cluster on the stems and can be blasted off with a hose. Check seedlings daily in their first fortnight — that is when a whole row gets lost."
+  },
+  {
+    id: "birch", group: "outside", name: "Silver Birch",
+    latin: "Betula pendula", draw: "birch",
+    water: "A newly planted birch needs a good soaking once a week through its first two summers, poured slowly at the base so it sinks in instead of running off. Check with a finger a few centimetres down first — if it is damp there, leave it. After two or three years it finds its own water and you can stop entirely. Birches are shallow-rooted, so they suffer in a long drought before most other trees do.",
+    light: "Full sun. Birch is a pioneer tree, the first to colonise open ground, and it will not thrive shaded by anything bigger. It has a full winter dormancy: the leaves turn butter yellow and drop in autumn, and it stands bare until April. The white bark is at its best in winter, which is rather the point of planting one.",
+    grow: "Collect the little cone-like catkins in autumn as they start to break apart, and rub out the tiny winged seeds. Scatter them on the surface of damp compost and leave the pot outside over winter — the cold is what makes them germinate. Seedlings appear in spring. A birch is two or three metres tall in five years, but the bark does not turn properly white until it is about eight, so the tree takes a while to look like its parent.",
+    clean: "Rain does the cleaning. Prune a birch only in late summer or early autumn. This matters more than for most trees: cut it in late winter or spring and it bleeds sap heavily from the wound and cannot stop, which weakens it badly. Cut back to just above a bud or a side branch, never leaving a stub.",
+    pests: "Birch is troubled by aphids, which drip sticky honeydew onto anything parked underneath, and by bracket fungi on older trees. A healthy tree shrugs off the aphids. The one to take seriously is bronze birch borer damage on a stressed tree — the best defence is simply keeping a young birch watered so it never gets stressed in the first place."
+  },
+  {
+    id: "lavender", group: "outside", name: "Lavender",
+    latin: "Lavandula", draw: "lavender",
+    water: "Lavender comes from dry, stony hillsides and hates wet feet. Put your finger two centimetres in: only water if it is dry right down, and then water well and leave it. An established plant in the ground needs almost no watering at all. Far more lavender is killed by soggy winter soil than by drought.",
+    light: "Full sun and free-draining soil. In shade it goes leggy, flowers poorly and rots at the base. It does not need a dormancy as such but it does slow right down in winter; the main thing is to keep it dry then, because cold plus wet is what finishes it off.",
+    grow: "Take cuttings in late summer: pull off a side shoot about eight centimetres long with a little heel of older wood, strip the lower leaves, and push it into gritty compost. Roots form in four to six weeks. It looks like a small version of the parent the following summer and is a proper bush in two to three years. Seed is slow and the offspring rarely match the parent.",
+    clean: "Rain keeps it clean outdoors. Cutting is the important bit: trim it every year after flowering, taking off the spent flower stems and about two or three centimetres of the green growth below them. Never cut back into the bare woody stems — lavender does not regrow from old wood and that cut stays a dead stump. Prune in late summer, and stop by early autumn so soft new growth is not caught by frost.",
+    pests: "Lavender is troubled by very little, which is part of its appeal, and its scent actually helps keep aphids and moths away from plants nearby. The one thing to watch for is froghopper 'cuckoo spit' on the stems in early summer, which is harmless and can be hosed off."
+  },
+  {
+    id: "oak", group: "outside", name: "English Oak",
+    latin: "Quercus robur", draw: "oak",
+    water: "A young oak needs watering through its first two or three summers while its roots go down — a bucket a week in dry weather, poured slowly so it soaks in rather than running off. Test with a finger a few centimetres into the soil first; if it is moist down there, leave it. Once established, an oak finds its own water and should never need watering again.",
+    light: "Full sun. An oak grown in the shade of bigger trees stretches upward thin and weak. It has a true winter dormancy: it drops its leaves in autumn, stands bare through the cold, and comes back in late spring — it is one of the last trees to come into leaf, so a bare oak in April is not a dead one.",
+    grow: "Collect a fat, unblemished acorn in autumn and float the acorns in water — the ones that sink are good, the floaters are hollow. Plant it a few centimetres deep in a deep pot, because the first thing it grows is a long taproot. It sprouts the following spring. Be honest about the timescale: it is a metre tall in three or four years and takes decades to look like a full-grown parent tree, and it will not produce its own acorns for about forty years.",
+    clean: "Rain does the cleaning. For shaping, cut a branch back to just above a bud or a side branch rather than leaving a stub, which dies back and lets rot in. Prune an oak only in late summer — never in spring when the sap is rising, and never in winter, because pruning wounds made then are far more likely to become infected.",
+    pests: "Oaks feed hundreds of kinds of insect and a healthy tree copes with nearly all of them, so nibbled leaves are nothing to worry about. The one that matters is oak processionary moth, whose caterpillars build white silk nests on the trunk and have hairs that irritate skin badly — never touch a nest, and tell an adult so it can be reported."
+  },
+  {
+    id: "scotspine", group: "outside", name: "Scots Pine",
+    latin: "Pinus sylvestris", draw: "pine",
+    water: "Water a young pine weekly through its first two summers, then leave it alone forever. Check the soil a few centimetres down with a finger before you do — pines grow naturally on thin, sandy, poor ground and rot at the roots in soil that stays wet. A pine that has been in the ground three years should never need watering again, even in a drought.",
+    light: "Full sun, always. Scots pine is the tree that colonises open heath and it cannot cope with shade at all. Being an evergreen conifer it keeps its needles all winter, so there is no bare season, but it still slows almost to a stop in the cold and does all its growing in one burst in late spring.",
+    grow: "Collect closed cones in autumn and keep them somewhere warm and dry indoors; over a week or two they open on their own and drop winged seeds. Sow them in gritty compost in spring. Seedlings are slow at first — a hand's height after two years — and it takes fifteen to twenty years before the tree develops the flaking orange upper bark that makes a mature Scots pine unmistakable.",
+    clean: "Rain cleans it. Pines need almost no pruning and resent it: cut a branch right back to the trunk and nothing regrows from that spot, because pines do not sprout from old wood. If you must remove a branch, do it in late summer. Never cut the leading shoot at the top, or the tree grows up forked and weak.",
+    pests: "Pine sawfly caterpillars strip needles in groups and can be picked off by hand. Adelgids leave white woolly patches on the bark, which look worse than they are. A healthy, unshaded pine on dry ground deals with almost everything itself."
+  },
+  {
+    id: "rose", group: "outside", name: "Rose",
+    latin: "Rosa", draw: "rose",
+    water: "Feel the soil a few centimetres down at the base. Roses are thirsty and want a deep soak — a full watering can at the roots twice a week in a dry summer is better than a daily sprinkle, which only wets the surface. Water the soil, never the leaves: wet foliage is what lets blackspot take hold.",
+    light: "At least six hours of direct sun. A rose in shade produces few flowers and far more disease. It has a proper winter dormancy: it drops its leaves, stands as bare thorny stems through the cold, and shoots again in spring. That bare, dead-looking period is completely normal and is exactly when you prune it.",
+    grow: "Take hardwood cuttings in autumn: a pencil-thick stem about 25 cm long, cut straight across below a bud at the bottom and slanted above a bud at the top so you remember which way up it goes. Push two-thirds of it into gritty soil in a sheltered spot and forget about it until spring. Roots take a whole winter, and the new plant flowers properly in its second or third year.",
+    clean: "Rain washes the leaves, but clear fallen leaves off the ground in autumn and bin them — blackspot spores overwinter in them and reinfect the plant in spring. Prune in late winter while it is still dormant: cut about half a centimetre above an outward-facing bud, on a slant away from it, so water runs off. Stop pruning by early spring once growth begins, and only deadhead after that.",
+    pests: "Greenfly swarm on new shoots and flower buds; squash them or hose them off, and ladybirds will do the rest. Blackspot and rust show as marks on the leaves — pick affected leaves off and bin them rather than composting them, or the problem returns every year and spreads along a whole row of roses."
+  },
+  {
+    id: "tulip", group: "outside", name: "Tulip",
+    latin: "Tulipa", draw: "tulip",
+    water: "While it is in leaf and flower, feel the soil two centimetres down: water if dry, leave it if moist. Once the flowers are over and the leaves start yellowing, stop watering completely. The bulb is going to sleep underground for the summer, and wet soil then is the usual reason tulips rot and never come back.",
+    light: "Full sun while growing and flowering. Tulips have an unusual dormancy: they rest through summer, not winter. The bulb needs a proper cold spell to flower at all, which is why they are planted in November — plant them too early in warm soil and they come up blind.",
+    grow: "Lift a clump after the leaves have died back and pull the small bulbs off the side of the parent. Replant them straight away, three times their own depth. A large offset flowers the next spring; a small one takes two or three years to build up enough. Tulips grown from seed take five years or more and rarely resemble the parent, so offsets are the sensible route.",
+    clean: "Rain keeps them clean. The important rule is the same as for daffodils: snap off the dead flower head so the plant does not waste energy making seed, but leave every leaf alone until it yellows and pulls away easily. Cutting the leaves early starves next year's flower. Tidy them up in June and do nothing else until autumn.",
+    pests: "Squirrels and mice dig newly planted bulbs up — a layer of wire mesh over the soil stops them. Tulip fire is a fungus that makes scorched-looking, twisted leaves with brown spots; dig up and bin any plant showing it immediately, bulb and all, because it spreads through a whole bed and stays in the soil for years."
+  },
+  {
+    id: "daffodil", group: "outside", name: "Daffodil",
+    latin: "Narcissus", draw: "daffodil",
+    water: "In the ground, rain is usually enough. In a pot, feel the compost two centimetres down while the plant is in leaf and growing: dry means water, moist means leave it. Once the leaves have yellowed off in early summer, stop watering altogether — the bulb is resting underground and wet soil in summer rots it.",
+    light: "Sun or light shade while it is growing and flowering. Under a deciduous tree works well, because daffodils do all their growing before the tree comes into leaf. It has a proper dormancy, but an unusual one: it rests in summer, not winter. The bulb sits dry underground from June, then roots in autumn and pushes up in late winter.",
+    grow: "You do not grow daffodils from cuttings — a bulb makes more bulbs beside itself. Lift a clump once the leaves have died back, pull the smaller bulbs off the side of the parent, and replant them straight away, twice their own depth. A good-sized offset flowers the very next spring; a small one takes two or three years to build up enough to flower.",
+    clean: "Rain keeps them clean. The one rule that matters more than any other: do not cut the leaves off after flowering, and do not tie them in knots. The plant spends those six weeks feeding next year's flower back down into the bulb, and cutting the leaves early is the usual reason daffodils come up blind the following spring. Snap off the dead flower head, then leave the leaves alone until they yellow and pull away easily in June.",
+    pests: "Narcissus bulb fly lays eggs at the neck of the bulb in late spring and the grub eats it hollow; firming the soil over the dying leaves makes it much harder for the fly to get in. Slugs chew the flowers. A bulb that comes up blind or soft is best dug out and thrown away, not replanted, so nothing spreads to the rest."
+  },
+  {
+    id: "bluebell", group: "outside", name: "Bluebell",
+    latin: "Hyacinthoides non-scripta", draw: "bluebell",
+    water: "Bluebells live in damp woodland and normally need no watering at all. If you are growing them in a pot, feel the compost: water when the top two centimetres are dry while the leaves are up, and stop entirely once the leaves yellow in June. The bulb sleeps dry through the summer and rots if kept wet.",
+    light: "Light, dappled shade is what they want — under trees is ideal, because they flower in April before the canopy closes over. They will manage in sun if the soil stays damp. They rest in summer rather than winter, sitting as dormant bulbs from June until the leaves push up again in late winter.",
+    grow: "Lift a clump right after flowering, while the leaves are still green — this is called moving them 'in the green' and it works far better than dry bulbs, which often fail. Pull the clump apart and replant the bulbs ten centimetres deep straight away. They flower the following spring. They also seed themselves, though a seedling takes four to five years to reach flowering size.",
+    clean: "Rain does everything. Never cut or mow the leaves down after flowering — they need those weeks to feed the bulb, and cutting them is how a bluebell patch slowly disappears. Let them yellow and collapse on their own in June, then clear the dead leaves away.",
+    pests: "Bluebells have very few pests. The real threat is a different plant: Spanish bluebells cross with native ones and dilute them, so plant the native kind, which has narrower leaves, deeper blue flowers all hanging down one side of a nodding stem, and a strong scent. Never dig bluebells up from the wild — it is against the law."
+  },
+  {
+    id: "foxglove", group: "outside", name: "Foxglove",
+    latin: "Digitalis purpurea", draw: "foxglove",
+    water: "Feel the soil two centimetres down: water when dry, leave when moist. Foxgloves like soil that stays slightly damp and will wilt dramatically in a dry spell, though they usually recover once watered. They are woodland-edge plants, so they resent both baking dry soil and standing water.",
+    light: "Light shade or sun, so long as the soil does not bake. A foxglove is a biennial: in its first year it makes only a flat rosette of leaves at ground level, and it flowers in its second year and then dies. That rosette sitting there all winter is not a failed plant — it is exactly what it should be doing.",
+    grow: "Let one spike go to seed and it does the work itself. Each plant makes enormous numbers of tiny seeds; shake a ripe spike where you want more, or collect the seed and scatter it on the surface in autumn without covering it, because it needs light to germinate. A seedling makes its rosette in year one and flowers in year two.",
+    clean: "Rain keeps them clean. Cut the main spike off once most of the flowers have gone over and side spikes often follow, extending the display. If you want it to seed itself, leave one spike standing until the pods turn brown and split. Cut the dead plant down in autumn once the seed has dropped.",
+    pests: "Slugs eat the young rosettes in winter and early spring, which is when a patch is lost, so protect them then. Otherwise foxgloves are barely troubled. Important: every part of a foxglove is poisonous — wash your hands after handling one, and never put any of it in your mouth."
+  },
+  {
+    id: "holly", group: "outside", name: "Holly",
+    latin: "Ilex aquifolium", draw: "holly",
+    water: "Water a newly planted holly weekly for its first two summers, checking with a finger first. Established holly is tough and needs nothing. It dislikes soil that stays waterlogged, so if a spot puddles after rain, plant something else there.",
+    light: "Sun or shade — holly is one of the few plants genuinely happy in deep shade, though it fruits far better with some sun. It is evergreen, so it never goes bare, but it stops growing entirely through the cold months. Only female hollies carry berries, and only if a male plant is growing somewhere nearby.",
+    grow: "Take semi-ripe cuttings in late summer: a shoot about ten centimetres long with the soft tip removed and the lower leaves stripped. Push it into gritty compost and be patient, because holly is slow — roots can take three to four months. The young plant looks like a miniature parent quickly but takes many years to make a proper bush, and berries only come once it is mature.",
+    clean: "Rain cleans it. Holly takes cutting very well, which is why it makes good hedges. Cut just above a leaf or a side shoot. Prune in late summer, never in autumn or winter if you want berries, because you will simply cut them all off. Wear thick gloves — the leaf spines are genuinely sharp.",
+    pests: "Holly leaf miner makes pale winding tunnels inside the leaves; it looks bad but rarely harms the plant, and picking off the worst leaves is enough. Holly leaf blight causes black blotches and leaf fall in wet years — clear fallen leaves and bin them so it does not carry over."
+  },
+  {
+    id: "apple", group: "outside", name: "Apple Tree",
+    latin: "Malus domestica", draw: "apple",
+    water: "Water a young apple tree deeply once a week through its first three summers. Check the soil a few centimetres down first. Once established it manages alone, though watering during a dry spell while the fruit is swelling makes a real difference to the size of the crop.",
+    light: "Full sun for good fruit — six hours or more. In shade it grows perfectly well but produces little and the apples stay sour. It has a full winter dormancy and genuinely needs it: apples require a set number of cold hours each winter before they will flower properly in spring.",
+    grow: "This is the one plant here where seed does not work: an apple pip grows into a tree, but not the same kind of apple as the parent, because apples do not come true from seed. Every named apple variety is grafted — a shoot from the parent joined onto a rootstock. Grafting is done in late winter and the new tree fruits in three to four years.",
+    clean: "Rain does the washing. Prune in winter while it is dormant and leafless, cutting back to just above an outward-facing bud so the centre stays open to light and air. Take out anything dead, crossing or growing inward. Stop by late winter before the buds swell, and never prune an apple in autumn, when wounds heal slowly and let disease in.",
+    pests: "Codling moth grubs tunnel into the fruit and leave a hole with brown crumbs; pheromone traps hung in late spring cut the numbers a lot. Aphids curl the new leaves. Clear up fallen apples rather than leaving them to rot underneath, because that is where next year's problems overwinter, and one neglected tree will reinfect every other apple nearby."
+  },
+  // ======================================================= HOUSE PLANTS
   {
     id: "monstera", group: "house", name: "Swiss Cheese Plant",
     latin: "Monstera deliciosa", draw: "monstera",
@@ -203,8 +312,79 @@ const PLANTS = [
     clean: "Wipe the leaves with a dry or barely damp cloth; dust blocks light, and aloe is one of the few houseplants that really does need all the light it can get. Never cut a leaf halfway — take it off right at the base, because a cut leaf seals badly and stays open. Remove tatty outer leaves in spring, and do not cut anything in winter while it is resting.",
     pests: "Watch for mealybugs tucked deep between the leaves where they meet; a cotton bud and soapy water deals with them. Aloes are often kept on a sunny sill next to other succulents, and mealybugs will walk from pot to pot, so check the whole row if you find one."
   },
-
-  // ---------------------------------------------------- carnivorous plants
+  {
+    id: "peacelily", group: "house", name: "Peace Lily",
+    latin: "Spathiphyllum", draw: "peacelily",
+    water: "A peace lily tells you itself: the leaves droop dramatically when it is thirsty and lift again within hours of watering. Do not wait for that every time, though — repeated wilting weakens it. Feel the compost two centimetres down and water when it is dry, letting the pot drain fully. Brown crispy leaf tips usually mean tap water, so rainwater suits it better.",
+    light: "Light shade. It is a forest floor plant and one of the few that flowers in a fairly dim room, though it flowers more with brighter indirect light. Direct sun scorches it. No winter dormancy, but it rests in the dark months and needs much less water then.",
+    grow: "Split it at the roots in spring. Tip it out, find where the clump naturally separates into crowns each with its own roots and leaves, and pull them apart with your hands rather than cutting if you can. Pot each piece up. It looks like the parent immediately and will flower again within a year once settled.",
+    clean: "The broad leaves collect dust quickly, so wipe them with a damp cloth every couple of weeks. There are no nodes; cut any yellow leaf or spent flower stem right down at the base. Tidy it whenever it needs it in spring and summer, and leave it alone in deep winter.",
+    pests: "Watch for mealybugs and scale insects on the undersides and leaf stems, and wipe them off with soapy water. Note that a peace lily is mildly poisonous if chewed, so keep it away from pets and small children, and wash your hands after cutting it."
+  },
+  {
+    id: "pothos", group: "house", name: "Devil's Ivy",
+    latin: "Epipremnum aureum", draw: "pothos",
+    water: "Feel the compost two centimetres down: dry means water, moist means leave it. Devil's ivy is famously hard to kill and copes with being forgotten, but it does rot if kept constantly wet. Yellow leaves near the base almost always mean too much water rather than too little.",
+    light: "Anywhere from bright indirect light to a fairly dim corner, which is why it turns up in so many houses. The golden markings fade to plain green in low light. No winter dormancy, though it slows down markedly and wants far less water from November to February.",
+    grow: "The easiest cutting there is. Cut a piece of vine just below a node — the little brown bump where a leaf joins — with two or three leaves on it. Stand it in a glass of water on a windowsill and roots appear within two weeks. Pot it up once they are a few centimetres long. It looks like the parent straight away and fills a pot within a year.",
+    clean: "Wipe the leaves with a damp cloth now and then, and be gentle with the trailing stems. Cut just above a node to make it bushier — it branches from exactly that point, and the piece you removed is itself a cutting. Trim through spring and summer; leave it alone in the darkest months.",
+    pests: "Mealybugs and spider mites both turn up, usually where the leaf meets the stem. Wipe them off with soapy water. Devil's ivy is often hung above other plants, and pests dropping from it land on everything below, so deal with them promptly. It is poisonous if eaten, so keep it away from pets."
+  },
+  {
+    id: "rubber", group: "house", name: "Rubber Plant",
+    latin: "Ficus elastica", draw: "rubber",
+    water: "Finger two centimetres in: water when dry, leave when moist. A rubber plant would far rather be slightly dry than slightly wet. Sudden leaf drop is nearly always either overwatering or a cold draught, and the two are often mistaken for each other.",
+    light: "Bright indirect light. In gloom it grows leggy with widely spaced leaves; in harsh direct sun it scorches. It does not need a dormancy but hates being moved and hates cold draughts, so once you find a spot it likes, leave it there. Water much less in winter.",
+    grow: "Take a cutting just below a node with two or three leaves. It will leak white sap, which is an irritant — wipe it with a damp cloth and wash your hands, keeping it off skin and out of eyes. Let the cut seal for an hour, then put it in damp compost somewhere warm. Roots take one to two months. It takes two or three years to become a proper small tree like the parent.",
+    clean: "Those big glossy leaves are dust magnets and dust really does block the light, so wipe both sides with a damp cloth every few weeks. Cut just above a node to make it branch instead of growing as one bare stem. Prune in spring or early summer only, and never in winter when the wound heals slowly.",
+    pests: "Scale insects look like small brown limpets stuck along the stems and leaf veins; scrape them off with a fingernail and wipe with soapy water. They are easy to miss until there are many, so check the undersides whenever you dust it, and keep a new plant separate for a fortnight."
+  },
+  {
+    id: "zz", group: "house", name: "ZZ Plant",
+    latin: "Zamioculcas zamiifolia", draw: "zz",
+    water: "The ZZ stores water in fat underground tubers, so it genuinely prefers being forgotten. Push a finger in: only water when the compost is dry right through, which can be once a month or less. It is very nearly impossible to underwater and extremely easy to drown — a mushy stem at the base means it has been watered too often.",
+    light: "It tolerates low light better than almost anything else, and grows faster in bright indirect light. Keep it out of direct sun. No dormancy, but growth stops in winter and watering should almost stop with it.",
+    grow: "Split the clump when repotting, separating tubers with a shoot each. You can also take a single leaflet, let the cut dry for a day and lay it on damp compost — it will eventually form a tiny tuber and then a shoot, but this takes six months to a year, so it is a patience exercise rather than a quick job.",
+    clean: "The waxy leaflets shine when wiped and look dull with dust, so run a damp cloth over them occasionally. Cut a whole stem off at soil level if it yellows, rather than trimming leaflets. Do any tidying in spring or summer. It is poisonous if chewed and the sap can irritate skin, so wash your hands afterwards.",
+    pests: "Very few, which is another reason it is popular. Occasionally mealybugs appear where a stem leaves the soil; a cotton bud and soapy water deals with them. Because it is so often placed in dark corners and forgotten, check it over now and then rather than only when something looks wrong."
+  },
+  {
+    id: "orchid", group: "house", name: "Moth Orchid",
+    latin: "Phalaenopsis", draw: "orchid",
+    water: "Do not judge by the compost, because there is not really any — an orchid grows in bark. Look at the roots through the clear pot: silvery grey means thirsty, plump green means leave it. Water by soaking the whole pot in rainwater for ten minutes, then let every drop drain out. Water left in the crown where the leaves meet will rot it, so tip it out.",
+    light: "Bright indirect light, such as an east-facing sill. Direct midday sun burns the leaves. It has no dormancy, but a cool spell is the trigger for flowering: a few weeks in autumn where nights drop to around 16 degrees is what makes it produce a new flower spike.",
+    grow: "Sometimes a baby orchid, called a keiki, forms on an old flower spike. Wait until it has two or three roots a few centimetres long, then cut the spike either side of it and pot it in bark. It flowers in a year or two. Growing orchids from seed needs a sterile laboratory, so keikis and dividing are the only practical routes at home.",
+    clean: "Wipe the broad leaves with a damp cloth, supporting them from beneath. When the last flower drops, cut the spike just above one of the low bumps on the stem and it will often branch and flower again; if the spike has gone brown and dry, cut it right to the base. Do this after flowering and leave it alone while it is in bloom.",
+    pests: "Scale and mealybugs hide underneath leaves and between roots; wipe them off with soapy water. Fungus gnats appear if the bark is kept too wet, which is itself a warning sign. Check new orchids carefully — a supermarket plant often arrives with scale already on it."
+  },
+  {
+    id: "fern", group: "house", name: "Boston Fern",
+    latin: "Nephrolepis exaltata", draw: "fern",
+    water: "This is the opposite of the succulents: a Boston fern must never dry out completely. Feel the compost daily in summer and water as soon as the very top feels dry, keeping it evenly moist but not sitting in a puddle. Dry compost for even a day or two turns the fronds crisp and brown, and those fronds do not recover.",
+    light: "Light shade or bright indirect light — never direct sun. It also wants humid air, which is why a bathroom suits it so well; in a dry heated room the tips brown off. No winter dormancy, but it grows slowly in the cold and the heating is the real enemy then.",
+    grow: "Split the clump in spring. Tip it out and pull or cut the root ball into two or three pieces, each with a good handful of fronds and roots. Pot them separately and keep them humid while they settle. Each piece looks like a small parent immediately and fills its pot within a season. Ferns also produce spores under the fronds, but growing from spores is slow and fiddly.",
+    clean: "Do not wipe the fronds — they are far too delicate and rubbing snaps them. Instead, mist it or stand it in the shower under a gentle lukewarm spray, which both cleans and humidifies. Snip any brown frond off right at the base. Tidy it any time; there is no season to avoid.",
+    pests: "Scale insects sometimes stick to the frond stems and look like tiny brown lumps. Be careful with soapy sprays: ferns are more easily damaged by them than most houseplants, so wipe the insects off by hand where you can. Dry air causes more brown fronds than any pest does."
+  },
+  {
+    id: "christmascactus", group: "house", name: "Christmas Cactus",
+    latin: "Schlumbergera", draw: "christmascactus",
+    water: "Despite the name it is a jungle plant, not a desert one, and it wants more water than a normal cactus. Feel the compost: water when the top two centimetres are dry and let it drain. Keep it a little drier for a month after flowering while it rests, then resume. Shrivelled, limp segments usually mean too little water, not too much.",
+    light: "Bright indirect light. Direct sun turns the segments red and sickly. The flowering trigger is the interesting part: it needs long nights to set buds, so from about October give it twelve to fourteen hours of complete darkness each night for six weeks and it flowers at Christmas. A lamp left on in the room is the usual reason one never flowers.",
+    grow: "One of the simplest cuttings. Twist off a piece of two or three segments at a joint rather than cutting it, let the end dry for a day or two so it seals, then push it a centimetre into damp compost. Roots form in three to four weeks. It flowers in its second year and looks like the parent within two.",
+    clean: "Rinse it under a gentle lukewarm shower rather than wiping, since the segments snap off easily. Prune by twisting off segments at a joint after flowering, which makes it bushier and gives you cuttings. Never prune while it is in bud, or you will knock every flower off.",
+    pests: "Mealybugs settle in the joints between segments; a cotton bud and soapy water gets them. Watch also for stem rot at soil level, which comes from overwatering — a healthy plant is firm at the base, and a soft brown base cannot be saved, so take cuttings from the good end immediately."
+  },
+  {
+    id: "stringofhearts", group: "house", name: "String of Hearts",
+    latin: "Ceropegia woodii", draw: "hearts",
+    water: "It stores water in its leaves and in round tubers along the stems, so treat it like a succulent. Finger in the compost: water only when dry right through, then soak and drain. In winter it needs very little. Yellow leaves dropping off the strands almost always mean it has been watered too often.",
+    light: "Bright light, including some direct sun, which is what keeps the leaves close together and strongly marbled. In poor light the strands grow long and bare with big gaps between the leaves. No dormancy, but growth stops in winter and watering should nearly stop too.",
+    grow: "Two easy ways. Lay a length of strand on damp compost and pin it down — wherever a little round tuber touches the surface, it roots and sprouts. Or cut a piece with several leaf pairs and stand it in water. Either takes two to four weeks. It looks like the parent quickly but takes a year or two to grow really long strands.",
+    clean: "Do not wipe the strands; they tangle and snap. Lift them gently and rinse under a light spray instead. Trim any bare or straggly strand just above a leaf pair, and the cut piece is a free cutting. Tidy in spring or summer, not in winter.",
+    pests: "Mealybugs hide among the tangled strands and are very easy to miss until there are a lot, so lift the strands and look properly every few weeks. Because it usually hangs above other plants, anything falling from it lands on them, so check the pots underneath too."
+  },
+  // ======================================================= CARNIVOROUS PLANTS
   {
     id: "flytrap", group: "carnivorous", name: "Venus Flytrap",
     latin: "Dionaea muscipula", draw: "flytrap",
@@ -224,6 +404,15 @@ const PLANTS = [
     pests: "Aphids go for the curled new growth in the centre; drowning the plant under rainwater for a day clears them without chemicals. Sundews catch a lot of small flying pests themselves, which quietly protects the plants standing near them."
   },
   {
+    id: "forkedsundew", group: "carnivorous", name: "Forked Sundew",
+    latin: "Drosera binata", draw: "forkedsundew",
+    water: "Check the moss with a finger; moist means leave it. Stand it in a tray with a centimetre or two of rainwater through spring and summer. Rainwater or distilled only. It is a large, thirsty sundew and the tray should not be allowed to run dry while it is growing.",
+    light: "Full sun to bright light. Good light keeps the forked leaves upright and heavily dewed; poor light makes them floppy and bare. Unlike the Cape sundew it does take a winter rest: growth slows or stops, older leaves die back, and it wants to be cooler and only damp from November to February. Reduce the tray then rather than emptying it entirely.",
+    grow: "Root cuttings are the reliable method and slightly unusual. Tip the plant out, snip a piece of thick black root two or three centimetres long, lay it on damp moss and keep it humid and bright. New plants sprout along it in about six weeks. Leaf cuttings work too. Either way it reaches parent size in a year or so.",
+    clean: "Never wipe the leaves; the dew is the trap. Rinse it with rainwater if it gets dusty. Cut dead brown leaves off at the base with scissors so mould does not spread across the wet moss. Tidy it in spring and summer, and leave the dying leaves alone through the winter rest.",
+    pests: "Aphids attack the curled new growth. Submerging the pot under rainwater for a day drowns them without chemicals, which is the only safe option — ordinary insecticide kills carnivorous plants. Isolate any new arrival for a fortnight."
+  },
+  {
     id: "sarracenia", group: "carnivorous", name: "Trumpet Pitcher",
     latin: "Sarracenia", draw: "sarracenia",
     water: "Check the moss with a finger; if it is still moist, do nothing. Through spring and summer it should stand in a tray with two or three centimetres of rainwater — this is a bog plant and it is very hard to overwater in the growing season. Rainwater or distilled water only. Do not pour water down the pitchers themselves; they fill from rain naturally and tipping water in washes out what they have caught.",
@@ -241,43 +430,68 @@ const PLANTS = [
     clean: "Wipe the broad leaves with a damp cloth, as dust settles on them and blocks the light; be careful of the thin tendril holding each pitcher, because it snaps easily. Cut just above a node if you need to shorten a vine and it will branch from there. Prune in spring or summer while it is in growth, and avoid cutting in the coldest, darkest part of the year.",
     pests: "Mealybugs hide under the leaves and in the joints where the pitchers attach; wipe them off with soapy water on a cotton bud. Because Nepenthes are often grown crowded together in a humid spot, mealybugs spread fast, so check the whole group if you find them on one."
   },
-
-  // ---------------------------------------------------- outside plants
   {
-    id: "sunflower", group: "outside", name: "Sunflower",
-    latin: "Helianthus annuus", draw: "sunflower",
-    water: "Push a finger a couple of centimetres into the soil at the base. Dry means water, and water deeply rather than often, so the roots follow the moisture down and the plant can hold itself up. Moist means leave it. A big sunflower in a pot in July can drink a whole watering can in a day, so check it every morning in hot weather.",
-    light: "Full sun, the more the better — the clue is in the name, and a shaded sunflower grows thin, leans badly and produces a small head. There is no winter dormancy to think about, because a sunflower is an annual: it grows, flowers, sets seed and dies, all in one year.",
-    grow: "You grow more from seed, which is the whole point of them. Leave a head on the plant until the back turns brown and the seeds loosen, then rub them out and keep them somewhere dry and cool. Sow in spring after the last frost. A seedling is flowering and as tall as the parent in about three months, which is faster than almost anything else you can grow.",
-    clean: "Outdoor plants are dusted by the rain, so there is nothing to wipe. Cut the main stem above a node if you want side branches rather than one giant head. Deadhead spent flowers through summer to keep more coming, and stop once autumn arrives if you want to keep the seed — and leave a head or two standing, because birds strip them through winter.",
-    pests: "Slugs and snails will eat a young seedling down to nothing overnight, so protect them early with a barrier or by picking them off after dark. Blackfly cluster on the stems and can be blasted off with a hose. Check seedlings daily in their first fortnight — that is when a whole row gets lost."
+    id: "butterwort", group: "carnivorous", name: "Butterwort",
+    latin: "Pinguicula", draw: "butterwort",
+    water: "Feel the surface: keep it damp but never standing deep in water. A shallow tray with half a centimetre of rainwater through summer is right. Rainwater or distilled only. The leaves feel greasy rather than sticky-wet, which is where the name comes from, and that greasiness is the trap.",
+    light: "Bright light, a little direct sun. Mexican butterworts — the kind usually sold — have an unusual rest: in winter the sticky leaves are replaced by a tight rosette of small non-carnivorous succulent leaves, and the plant wants to be kept nearly dry until it starts growing again in spring. That change is normal and alarms people who think it is dying.",
+    grow: "Pull a single succulent leaf off during the winter rosette stage, taking it cleanly from the base, and lay it flat on damp sand and moss. A tiny plant forms at the base of the leaf in about a month. Butterworts also make offsets beside the parent which can simply be separated. Either reaches full size in under a year.",
+    clean: "Do not wipe the leaves — the greasy coating is the trap. If the leaves collect dust, a light mist of rainwater is enough. Pull off dead brown leaves at the base so mould does not spread. Tidy in spring and summer, and leave it alone during the winter rosette.",
+    pests: "Butterworts are famously good at catching fungus gnats, which is why keen growers stand one next to their other houseplants as living flypaper. They themselves are rarely troubled; aphids occasionally attack new growth and are dealt with by submerging the pot in rainwater."
   },
   {
-    id: "lavender", group: "outside", name: "Lavender",
-    latin: "Lavandula", draw: "lavender",
-    water: "Lavender comes from dry, stony hillsides and hates wet feet. Put your finger two centimetres in: only water if it is dry right down, and then water well and leave it. An established plant in the ground needs almost no watering at all. Far more lavender is killed by soggy winter soil than by drought.",
-    light: "Full sun and free-draining soil. In shade it goes leggy, flowers poorly and rots at the base. It does not need a dormancy as such but it does slow right down in winter; the main thing is to keep it dry then, because cold plus wet is what finishes it off.",
-    grow: "Take cuttings in late summer: pull off a side shoot about eight centimetres long with a little heel of older wood, strip the lower leaves, and push it into gritty compost. Roots form in four to six weeks. It looks like a small version of the parent the following summer and is a proper bush in two to three years. Seed is slow and the offspring rarely match the parent.",
-    clean: "Rain keeps it clean outdoors. Cutting is the important bit: trim it every year after flowering, taking off the spent flower stems and about two or three centimetres of the green growth below them. Never cut back into the bare woody stems — lavender does not regrow from old wood and that cut stays a dead stump. Prune in late summer, and stop by early autumn so soft new growth is not caught by frost.",
-    pests: "Lavender is troubled by very little, which is part of its appeal, and its scent actually helps keep aphids and moths away from plants nearby. The one thing to watch for is froghopper 'cuckoo spit' on the stems in early summer, which is harmless and can be hosed off."
+    id: "bladderwort", group: "carnivorous", name: "Bladderwort",
+    latin: "Utricularia", draw: "bladderwort",
+    water: "Keep it very wet — wetter than any other plant here. The terrestrial kinds like a tray of rainwater two or three centimetres deep all year, and the aquatic kinds simply float in a jar of rainwater. It must never dry out at any point. Rainwater or distilled only.",
+    light: "Bright light, including direct sun, which is what brings the little flowers. It has no real dormancy, though it slows in winter and the tray can be dropped a little. Most people grow it for the flowers and never see the traps at all.",
+    grow: "It spreads by itself, sending runners through the wet moss until it fills the pot and creeps into neighbouring ones. To make more, simply scoop out a piece of the mossy mat with runners in it and press it onto damp moss in another pot. It establishes within weeks. There is nothing difficult about it.",
+    clean: "There is nothing to wipe. Trim spent flower stems off at the base. Because it creeps, you may need to pull it out of pots it has invaded — it will happily colonise a flytrap's pot and compete with it, so weed it out when you see it arriving.",
+    pests: "Almost nothing troubles a bladderwort. Its own traps are the extraordinary part: tiny underground or underwater bladders that snap open in under a millisecond to suck in water fleas and mosquito larvae, which makes it one of the fastest movements in the whole plant kingdom. It quietly reduces mosquito larvae in standing water nearby."
   },
   {
-    id: "oak", group: "outside", name: "English Oak",
-    latin: "Quercus robur", draw: "oak",
-    water: "A young oak needs watering through its first two or three summers while its roots go down — a bucket a week in dry weather, poured slowly so it soaks in rather than running off. Test with a finger a few centimetres into the soil first; if it is moist down there, leave it. Once established, an oak finds its own water and should never need watering again.",
-    light: "Full sun. An oak grown in the shade of bigger trees stretches upward thin and weak. It has a true winter dormancy: it drops its leaves in autumn, stands bare through the cold, and comes back in late spring — it is one of the last trees to come into leaf, so a bare oak in April is not a dead one.",
-    grow: "Collect a fat, unblemished acorn in autumn and float the acorns in water — the ones that sink are good, the floaters are hollow. Plant it a few centimetres deep in a deep pot, because the first thing it grows is a long taproot. It sprouts the following spring. Be honest about the timescale: it is a metre tall in three or four years and takes decades to look like a full-grown parent tree, and it will not produce its own acorns for about forty years.",
-    clean: "Rain does the cleaning. For shaping, cut a branch back to just above a bud or a side branch rather than leaving a stub, which dies back and lets rot in. Prune an oak only in late summer — never in spring when the sap is rising, and never in winter, because pruning wounds made then are far more likely to become infected.",
-    pests: "Oaks feed hundreds of kinds of insect and a healthy tree copes with nearly all of them, so nibbled leaves are nothing to worry about. The one that matters is oak processionary moth, whose caterpillars build white silk nests on the trunk and have hairs that irritate skin badly — never touch a nest, and tell an adult so it can be reported."
+    id: "darlingtonia", group: "carnivorous", name: "Cobra Lily",
+    latin: "Darlingtonia californica", draw: "darlingtonia",
+    water: "This is the fussiest plant on the site. It grows in mountain streams where cold water runs past its roots, so it wants its roots kept cool as well as wet. Stand it in a tray of rainwater and, in hot weather, pour cold rainwater through the pot to flush it and drop the temperature. Warm, still water at the roots is what kills them.",
+    light: "Full sun on the leaves, but keep the pot itself shaded or wrapped so the roots stay cool. It needs a cold winter dormancy and tolerates frost well. If you cannot keep the roots cool in summer, this is not the plant to start with — a Sarracenia is far more forgiving.",
+    grow: "It spreads by stolons, long runners that pop up a new plant at a distance from the parent. Wait until one has its own roots, then cut the runner and pot it up separately in living moss with sand. It looks like a small parent immediately. Seed needs a cold spell to germinate and takes several years to reach any size.",
+    clean: "Rain cleans it. Cut dead brown pitchers off at the base in early spring. Leave the old growth standing over winter to protect the crown. Do not tip water down the pitchers — the translucent windows and the forked tongue are what lure and confuse insects, and flooding the tube wastes what it has caught.",
+    pests: "Aphids on new growth, dealt with by submerging the pot. The real enemy is not a pest at all but heat at the roots, which causes sudden collapse in midsummer and is almost always mistaken for a disease."
   },
   {
-    id: "daffodil", group: "outside", name: "Daffodil",
-    latin: "Narcissus", draw: "daffodil",
-    water: "In the ground, rain is usually enough. In a pot, feel the compost two centimetres down while the plant is in leaf and growing: dry means water, moist means leave it. Once the leaves have yellowed off in early summer, stop watering altogether — the bulb is resting underground and wet soil in summer rots it.",
-    light: "Sun or light shade while it is growing and flowering. Under a deciduous tree works well, because daffodils do all their growing before the tree comes into leaf. It has a proper dormancy, but an unusual one: it rests in summer, not winter. The bulb sits dry underground from June, then roots in autumn and pushes up in late winter.",
-    grow: "You do not grow daffodils from cuttings — a bulb makes more bulbs beside itself. Lift a clump once the leaves have died back, pull the smaller bulbs off the side of the parent, and replant them straight away, twice their own depth. A good-sized offset flowers the very next spring; a small one takes two or three years to build up enough to flower.",
-    clean: "Rain keeps them clean. The one rule that matters more than any other: do not cut the leaves off after flowering, and do not tie them in knots. The plant spends those six weeks feeding next year's flower back down into the bulb, and cutting the leaves early is the usual reason daffodils come up blind the following spring. Snap off the dead flower head, then leave the leaves alone until they yellow and pull away easily in June.",
-    pests: "Narcissus bulb fly lays eggs at the neck of the bulb in late spring and the grub eats it hollow; firming the soil over the dying leaves makes it much harder for the fly to get in. Slugs chew the flowers. A bulb that comes up blind or soft is best dug out and thrown away, not replanted, so nothing spreads to the rest."
+    id: "cephalotus", group: "carnivorous", name: "Albany Pitcher Plant",
+    latin: "Cephalotus follicularis", draw: "cephalotus",
+    water: "Keep the compost damp but not sodden — a shallow tray of rainwater in summer, and in winter just damp with no tray at all. Rainwater or distilled only. It is more prone to rotting than a Sarracenia, so err on the drier side, especially when it is cold.",
+    light: "Bright light with some direct sun, which turns the little pitchers a deep burgundy red; in shade they stay green and small. It slows down in winter and wants to be cooler and drier then, though it does not die back the way a flytrap does. It comes from one corner of south-western Australia and grows nowhere else in the wild.",
+    grow: "Divide it in spring, separating a growth point with roots attached. Leaf pullings also work: take a whole leaf with its white base, lay it on damp moss in a sealed bag, and small plants appear after two or three months. It is slow — two to three years to look like a full parent plant — so patience matters more than technique.",
+    clean: "The pitchers are small and rain or a light misting keeps them clean. Snip dead pitchers and leaves off at the base with scissors so mould does not take hold. Tidy in spring and summer. Note that it makes two kinds of leaf — flat ordinary ones and jug-shaped traps — and both are normal.",
+    pests: "Aphids and mealybugs both attack it, and it is small enough that an infestation does real damage quickly. Submerging the pot deals with aphids. Keep it away from a new plant for a fortnight, because a Cephalotus is slow to recover from anything."
+  },
+  {
+    id: "heliamphora", group: "carnivorous", name: "Sun Pitcher",
+    latin: "Heliamphora", draw: "heliamphora",
+    water: "Keep it constantly moist with rainwater and give it humid air — it comes from the tops of the tepui mountains in South America, where it sits in cloud almost permanently. A shallow tray is fine. It also likes water poured through the pot regularly, and unlike most pitchers it does not mind a little rainwater in the traps.",
+    light: "Very bright light, but cool. That combination is what makes it difficult: it wants strong light without heat, with nights that drop cool. A terrarium with a fan and good lighting suits it far better than a windowsill. There is no dormancy, but it dislikes warm nights and sulks in a hot room.",
+    grow: "Divide a clump in spring, separating a crown with its own roots. It is slow but reliable, and the division looks like the parent at once. Seed is possible but takes many years. Most people buy a division rather than raising one.",
+    clean: "Mist or rinse with rainwater rather than wiping. Cut dead pitchers off at the base. The little spoon-shaped nectar cup at the top of each pitcher is where insects are lured, so avoid handling that part. Tidy whenever needed, since it never goes dormant.",
+    pests: "Aphids and mealybugs, dealt with by submerging or by a cotton bud and soapy water. The bigger risk is the environment rather than any insect: a warm, still, dry room will finish one off far quicker than any pest."
+  },
+  {
+    id: "byblis", group: "carnivorous", name: "Rainbow Plant",
+    latin: "Byblis", draw: "byblis",
+    water: "Stand it in a tray of rainwater through the growing season and keep the compost wet. Rainwater or distilled only. The annual kinds die after setting seed and that is normal — you keep the plant going by keeping the seed, not by nursing the parent through.",
+    light: "Full sun. The name comes from the way sunlight splits into colours through the thousands of sticky droplets along its thread-like leaves, and you only get that effect in strong light. It comes from Australia, and the annual kinds are triggered by bushfire smoke in the wild.",
+    grow: "From seed, with an odd requirement: the seed germinates far better after being treated with smoke, which is what tells it a fire has cleared the ground. Growers use smoke water or a smoke-infused paper disc soaked in rainwater. Sow on damp sandy peat in spring. It flowers within a few months, which for a plant this size is very fast.",
+    clean: "Never wipe it — the droplets are the trap and the whole point of the plant. Rinse with rainwater if it becomes dusty. Cut dead stems away at the base. There is little pruning to do; the annual kinds simply finish their year and die.",
+    pests: "It catches most of its own pests, which is rather the point, and small flies stick to it constantly. Aphids occasionally reach the growing tip; submerge the pot in rainwater. Do not use insecticide."
+  },
+  {
+    id: "drosophyllum", group: "carnivorous", name: "Dewy Pine",
+    latin: "Drosophyllum lusitanicum", draw: "drosophyllum",
+    water: "This one breaks the rule that every carnivorous plant wants a wet tray. The dewy pine grows on dry, sunny hillsides in Portugal, Spain and Morocco, and it rots immediately if stood in water. Water it from the top with rainwater when the surface has dried, and let it drain right through. Never use a tray.",
+    light: "Full, blazing sun. It cannot have too much. There is no true dormancy, but it grows more slowly in winter. It is also the only carnivorous plant here that smells — a honey scent that draws insects in from a surprising distance.",
+    grow: "From seed, and it must be sown where it is to stay. The taproot hates being disturbed and a dewy pine very often dies if it is repotted or moved, so sow two or three seeds directly into a deep final pot and thin to the strongest. Nick the hard seed coat gently before sowing. It reaches full size in about a year.",
+    clean: "Do not wipe it — the dew is the trap. Cut dead leaves off at the base. Because it is never repotted, keep the surface clear of fallen debris so mould does not start. Tidy it whenever needed.",
+    pests: "Aphids, occasionally. Do not submerge this one to deal with them, since it hates wet roots — wash them off with a spray of rainwater instead. The main cause of death is not a pest but kindness: standing a dewy pine in a water tray with the rest of the collection kills it within weeks."
   }
 ];
 
@@ -308,6 +522,25 @@ function leafShape(c, len, wide, colour) {
   c.quadraticCurveTo(wide, -len * 0.45, 0, -len);
   c.quadraticCurveTo(-wide, -len * 0.45, 0, 0);
   c.fill();
+}
+
+function heart(c, x, y, r, colour) {
+  c.fillStyle = colour;
+  c.beginPath();
+  c.moveTo(x, y + r);
+  c.bezierCurveTo(x - r * 1.5, y - r * 0.4, x - r * 0.45, y - r * 1.3, x, y - r * 0.35);
+  c.bezierCurveTo(x + r * 0.45, y - r * 1.3, x + r * 1.5, y - r * 0.4, x, y + r);
+  c.fill();
+}
+
+function dewDrops(c, x1, y1, x2, y2, n, colour) {
+  c.fillStyle = colour;
+  for (let i = 0; i <= n; i++) {
+    const t = i / n;
+    c.beginPath();
+    c.arc(x1 + (x2 - x1) * t, y1 + (y2 - y1) * t, 3, 0, Math.PI * 2);
+    c.fill();
+  }
 }
 
 const ART = {
@@ -582,6 +815,691 @@ const ART = {
     c.beginPath(); c.ellipse(0, -62, 15, 15, 0, 0, Math.PI * 2); c.fill();
     c.fillStyle = "#e08e12";
     c.beginPath(); c.ellipse(0, -62, 9, 9, 0, 0, Math.PI * 2); c.fill();
+  },
+  birch(c) {
+    // the white trunk with its black scars is the whole point of a birch
+    c.fillStyle = "#eae7df";
+    c.beginPath();
+    c.moveTo(-10, 100); c.lineTo(-6, -30); c.lineTo(6, -30); c.lineTo(10, 100);
+    c.closePath(); c.fill();
+    c.fillStyle = "#3a3733";
+    for (const [x, y, w] of [[-6, 60, 9], [2, 28, 7], [-5, -2, 8], [4, -20, 6], [-2, 80, 6]]) {
+      c.fillRect(x, y, w, 3.2);
+    }
+    c.strokeStyle = "#d8d4c9"; c.lineWidth = 4; c.lineCap = "round";
+    for (const s of [-1, 1]) {
+      c.beginPath(); c.moveTo(0, -24); c.lineTo(s * 30, -58); c.stroke();
+      c.beginPath(); c.moveTo(0, -44); c.lineTo(s * 20, -80); c.stroke();
+    }
+    // birch leaves are small and a light, almost yellow green
+    c.fillStyle = "#7fb84f";
+    for (const [x, y, r] of [[0, -86, 34], [-32, -62, 25], [32, -62, 25], [-16, -104, 22], [18, -104, 22]]) {
+      c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill();
+    }
+    c.fillStyle = "#9acb63";
+    for (const [x, y, r] of [[-10, -98, 16], [16, -80, 14], [-28, -70, 12]]) {
+      c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill();
+    }
+  },
+  pine(c) {
+    c.fillStyle = "#6b4a2f";
+    c.beginPath();
+    c.moveTo(-11, 100); c.lineTo(-6, 10); c.lineTo(6, 10); c.lineTo(11, 100);
+    c.closePath(); c.fill();
+    // three skirts of dark needles, widest at the bottom
+    const tiers = [[26, 50, 46], [-8, 26, 36], [-40, 4, 26]];
+    for (const [top, bottom, wide] of tiers) {
+      c.fillStyle = "#2f6136";
+      c.beginPath();
+      c.moveTo(0, top - 34);
+      c.lineTo(-wide, bottom);
+      c.lineTo(-wide * 0.5, bottom - 4);
+      c.lineTo(0, bottom + 4);
+      c.lineTo(wide * 0.5, bottom - 4);
+      c.lineTo(wide, bottom);
+      c.closePath(); c.fill();
+    }
+    c.fillStyle = "#3d7a42";
+    c.beginPath();
+    c.moveTo(0, -80); c.lineTo(-20, -34); c.lineTo(20, -34);
+    c.closePath(); c.fill();
+  },
+  rose(c) {
+    c.strokeStyle = "#3f7a35"; c.lineWidth = 7; c.lineCap = "round";
+    c.beginPath(); c.moveTo(0, 100); c.quadraticCurveTo(-8, 10, 0, -46); c.stroke();
+    // thorns
+    c.fillStyle = "#2f5d28";
+    for (const y of [70, 40, 10, -18]) {
+      const s = y % 20 === 0 ? 1 : -1;
+      c.beginPath();
+      c.moveTo(s * 3, y); c.lineTo(s * 13, y - 7); c.lineTo(s * 3, y - 9);
+      c.closePath(); c.fill();
+    }
+    for (const [y, s] of [[56, -1], [20, 1], [-10, -1]]) {
+      c.save(); c.translate(0, y); c.rotate(s * 1.15);
+      leafShape(c, 38, 18, "#39762f");
+      c.restore();
+    }
+    // the bloom: rings of petals wrapped round a tight middle
+    for (let ring = 3; ring >= 1; ring--) {
+      const r = 10 + ring * 9;
+      c.fillStyle = ring === 3 ? "#c0392b" : ring === 2 ? "#d9453a" : "#e8574c";
+      for (let i = 0; i < 6 + ring * 2; i++) {
+        const a = (i / (6 + ring * 2)) * Math.PI * 2 + ring;
+        c.save(); c.translate(0, -62); c.rotate(a);
+        c.beginPath(); c.ellipse(0, -r * 0.6, r * 0.55, r * 0.7, 0, 0, Math.PI * 2); c.fill();
+        c.restore();
+      }
+    }
+    c.fillStyle = "#8e2820";
+    c.beginPath(); c.arc(0, -62, 7, 0, Math.PI * 2); c.fill();
+  },
+  tulip(c) {
+    c.strokeStyle = "#4f9140"; c.lineWidth = 8; c.lineCap = "round";
+    c.beginPath(); c.moveTo(0, 100); c.lineTo(0, -40); c.stroke();
+    for (const s of [-1, 1]) {
+      c.save(); c.translate(s * 4, 96); c.rotate(s * 0.2);
+      c.fillStyle = "#5aa346";
+      c.beginPath();
+      c.moveTo(-9, 0);
+      c.quadraticCurveTo(s * -22, -66, 0, -120);
+      c.quadraticCurveTo(s * 20, -64, 9, 0);
+      c.closePath(); c.fill();
+      c.restore();
+    }
+    // the cup: three petals, the middle one in front
+    c.fillStyle = "#c8365c";
+    for (const s of [-1, 1]) {
+      c.beginPath();
+      c.moveTo(s * 2, -38);
+      c.quadraticCurveTo(s * 30, -56, s * 22, -92);
+      c.quadraticCurveTo(s * 12, -104, s * 2, -84);
+      c.closePath(); c.fill();
+    }
+    c.fillStyle = "#e04a70";
+    c.beginPath();
+    c.moveTo(-16, -44);
+    c.quadraticCurveTo(-20, -86, 0, -100);
+    c.quadraticCurveTo(20, -86, 16, -44);
+    c.quadraticCurveTo(0, -34, -16, -44);
+    c.closePath(); c.fill();
+  },
+  bluebell(c) {
+    // long strappy leaves from the ground
+    c.strokeStyle = "#57a043"; c.lineWidth = 6; c.lineCap = "round";
+    for (const [s, reach] of [[-1, 52], [1, 48], [-1, 30], [1, 34]]) {
+      c.beginPath();
+      c.moveTo(s * 6, 100);
+      c.quadraticCurveTo(s * reach, 54, s * reach * 0.9, -14);
+      c.stroke();
+    }
+    // each stem goes up, then bends right over — that nod is what makes a bluebell
+    for (const [x, lean] of [[-28, -1], [0, 0.4], [28, 1]]) {
+      c.save(); c.translate(x, 100);
+      c.strokeStyle = "#4f8b3c"; c.lineWidth = 5;
+      c.beginPath();
+      c.moveTo(0, 0);
+      c.bezierCurveTo(0, -70, 0, -108, lean * 46, -112);
+      c.stroke();
+      for (let b = 0; b < 3; b++) {
+        const t = 0.55 + b * 0.22, u = 1 - t;
+        const bx = 3 * u * t * t * 0 + t * t * t * (lean * 46);
+        const by = 3 * u * u * t * -70 + 3 * u * t * t * -108 + t * t * t * -112;
+        c.save(); c.translate(bx, by);
+        c.strokeStyle = "#4f8b3c"; c.lineWidth = 2.4;
+        c.beginPath(); c.moveTo(0, 0); c.lineTo(lean * 2, 10); c.stroke();
+        c.translate(lean * 2, 10);
+        c.fillStyle = b % 2 ? "#5b5fc7" : "#6f74dd";
+        c.beginPath();
+        c.moveTo(-8, 0);
+        c.quadraticCurveTo(-10, 20, -6, 25);
+        c.quadraticCurveTo(0, 29, 6, 25);
+        c.quadraticCurveTo(10, 20, 8, 0);
+        c.closePath(); c.fill();
+        // the six tips curl back on themselves at the mouth of the bell
+        c.fillStyle = "#9195ef";
+        for (const d of [-7, -2.5, 2.5, 7]) {
+          c.beginPath(); c.ellipse(d, 25, 3.2, 3.4, 0, 0, Math.PI * 2); c.fill();
+        }
+        c.restore();
+      }
+      c.restore();
+    }
+  },
+  foxglove(c) {
+    c.strokeStyle = "#4c8a3b"; c.lineWidth = 8; c.lineCap = "round";
+    c.beginPath(); c.moveTo(0, 100); c.lineTo(-2, -110); c.stroke();
+    for (const s of [-1, 1]) {
+      c.save(); c.translate(0, 90); c.rotate(s * 1.2);
+      leafShape(c, 46, 20, "#43803a");
+      c.restore();
+    }
+    // tube flowers all the way up, biggest at the bottom
+    for (let i = 0; i < 8; i++) {
+      const y = 56 - i * 20, s = i % 2 ? 1 : -1;
+      const w = 13 - i * 0.8;
+      c.save(); c.translate(s * 9, y); c.rotate(s * 0.5);
+      c.fillStyle = i % 2 ? "#c778c8" : "#d98ad9";
+      c.beginPath();
+      c.moveTo(0, 0);
+      c.quadraticCurveTo(-w, 6, -w * 0.9, 26);
+      c.quadraticCurveTo(0, 34, w * 0.9, 26);
+      c.quadraticCurveTo(w, 6, 0, 0);
+      c.closePath(); c.fill();
+      c.fillStyle = "#f3e2f3";
+      c.beginPath(); c.ellipse(0, 25, w * 0.7, 5, 0, 0, Math.PI * 2); c.fill();
+      c.fillStyle = "#8d3f8d";
+      for (const d of [-4, 2]) {
+        c.beginPath(); c.arc(d, 22, 2, 0, Math.PI * 2); c.fill();
+      }
+      c.restore();
+    }
+  },
+  holly(c) {
+    c.fillStyle = "#5a4630";
+    c.fillRect(-7, 40, 14, 60);
+    c.strokeStyle = "#5a4630"; c.lineWidth = 5; c.lineCap = "round";
+    for (const s of [-1, 1]) {
+      c.beginPath(); c.moveTo(0, 44); c.lineTo(s * 34, 6); c.stroke();
+    }
+    // spiky leaves, drawn as a zig-zag outline
+    const spots = [[-44, 4], [-16, -30], [16, -30], [44, 4], [0, -74], [-32, -54], [32, -54]];
+    for (const [x, y] of spots) {
+      c.save(); c.translate(x, y); c.rotate((x / 60) * 0.6);
+      c.fillStyle = "#1f5c2c";
+      c.beginPath();
+      c.moveTo(0, -26);
+      for (let i = 0; i < 4; i++) {
+        const yy = -26 + (i + 1) * 13;
+        c.lineTo(11, yy - 8); c.lineTo(6, yy);
+      }
+      c.lineTo(0, 28);
+      for (let i = 3; i >= 0; i--) {
+        const yy = -26 + (i + 1) * 13;
+        c.lineTo(-6, yy); c.lineTo(-11, yy - 8);
+      }
+      c.closePath(); c.fill();
+      c.strokeStyle = "#2f7a3c"; c.lineWidth = 1.6;
+      c.beginPath(); c.moveTo(0, -22); c.lineTo(0, 24); c.stroke();
+      c.restore();
+    }
+    for (const [x, y] of [[-10, -12], [4, -14], [-3, -1], [22, -24], [-24, -26]]) {
+      c.fillStyle = "#c0392b";
+      c.beginPath(); c.arc(x, y, 7, 0, Math.PI * 2); c.fill();
+      c.fillStyle = "#e05a4c";
+      c.beginPath(); c.arc(x - 2, y - 2, 2.6, 0, Math.PI * 2); c.fill();
+    }
+  },
+  apple(c) {
+    c.fillStyle = "#6b4f2a";
+    c.beginPath();
+    c.moveTo(-14, 100); c.lineTo(-8, 6); c.lineTo(8, 6); c.lineTo(14, 100);
+    c.closePath(); c.fill();
+    c.strokeStyle = "#6b4f2a"; c.lineWidth = 6; c.lineCap = "round";
+    for (const s of [-1, 1]) {
+      c.beginPath(); c.moveTo(0, 10); c.lineTo(s * 34, -26); c.stroke();
+    }
+    c.fillStyle = "#4a8f3c";
+    for (const [x, y, r] of [[0, -56, 46], [-40, -30, 32], [40, -30, 32], [-18, -84, 26], [20, -84, 26]]) {
+      c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill();
+    }
+    c.fillStyle = "#5ba549";
+    for (const [x, y, r] of [[-12, -70, 18], [22, -52, 16]]) {
+      c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill();
+    }
+    for (const [x, y] of [[-30, -34], [8, -20], [34, -46], [-6, -66], [46, -18]]) {
+      c.fillStyle = "#cf3c2e";
+      c.beginPath(); c.arc(x, y, 9, 0, Math.PI * 2); c.fill();
+      c.fillStyle = "#e8594a";
+      c.beginPath(); c.arc(x - 3, y - 3, 3, 0, Math.PI * 2); c.fill();
+      c.strokeStyle = "#6b4f2a"; c.lineWidth = 2;
+      c.beginPath(); c.moveTo(x, y - 9); c.lineTo(x + 2, y - 15); c.stroke();
+    }
+  },
+  peacelily(c) {
+    pot(c, 34);
+    for (let i = -3; i <= 3; i++) {
+      c.save(); c.translate(i * 6, -6); c.rotate(i * 0.28);
+      c.strokeStyle = "#2f6b32"; c.lineWidth = 4; c.lineCap = "round";
+      c.beginPath(); c.moveTo(0, 0); c.lineTo(0, -40); c.stroke();
+      c.save(); c.translate(0, -40);
+      leafShape(c, 62, 22, "#2f7a38");
+      c.restore();
+      c.restore();
+    }
+    // the white hood with its knobbly middle
+    for (const [x, r] of [[-22, -0.3], [16, 0.25]]) {
+      c.save(); c.translate(x, -60); c.rotate(r);
+      c.strokeStyle = "#3f8a42"; c.lineWidth = 3;
+      c.beginPath(); c.moveTo(0, 40); c.lineTo(0, 0); c.stroke();
+      c.fillStyle = "#f5f7f2";
+      c.beginPath();
+      c.moveTo(0, 4);
+      c.quadraticCurveTo(-17, -14, -6, -44);
+      c.quadraticCurveTo(2, -52, 9, -40);
+      c.quadraticCurveTo(16, -16, 0, 4);
+      c.closePath(); c.fill();
+      c.fillStyle = "#e8e2b8";
+      c.beginPath(); c.ellipse(-1, -22, 4, 16, 0.1, 0, Math.PI * 2); c.fill();
+      c.restore();
+    }
+  },
+  pothos(c) {
+    function vine(c, p, n) {
+      c.strokeStyle = "#3f7d3b"; c.lineWidth = 3.5; c.lineCap = "round";
+      c.beginPath();
+      c.moveTo(p[0], p[1]);
+      c.bezierCurveTo(p[2], p[3], p[4], p[5], p[6], p[7]);
+      c.stroke();
+      for (let i = 1; i <= n; i++) {
+        const t = i / (n + 0.4), u = 1 - t;
+        const x = u * u * u * p[0] + 3 * u * u * t * p[2] + 3 * u * t * t * p[4] + t * t * t * p[6];
+        const y = u * u * u * p[1] + 3 * u * u * t * p[3] + 3 * u * t * t * p[5] + t * t * t * p[7];
+        heart(c, x + (i % 2 ? 10 : -10), y, 11, i % 3 === 0 ? "#cfd96a" : "#3f8f3f");
+      }
+    }
+    pot(c, 30);
+    // devil's ivy trails, so the vines fall down past the sides of the pot
+    vine(c, [0, -16, -54, -44, -78, 12, -60, 98], 7);
+    vine(c, [0, -16, 54, -44, 78, 12, 60, 98], 7);
+    vine(c, [0, -16, -20, -60, 20, -86, 4, -112], 5);
+  },
+  rubber(c) {
+    pot(c, 34);
+    c.strokeStyle = "#5d4a34"; c.lineWidth = 9; c.lineCap = "round";
+    c.beginPath(); c.moveTo(0, -6); c.lineTo(0, -92); c.stroke();
+    // a few very big, thick, glossy leaves — not many small ones
+    for (const [s, y, ang] of [[-1, -22, 1.25], [1, -40, 1.15], [-1, -60, 1.0], [1, -76, 0.9]]) {
+      c.save(); c.translate(0, y); c.rotate(s * ang);
+      leafShape(c, 64, 27, "#1f4d2c");
+      c.strokeStyle = "#3f7a4a"; c.lineWidth = 2;
+      c.beginPath(); c.moveTo(0, -4); c.lineTo(0, -58); c.stroke();
+      c.restore();
+    }
+    c.save(); c.translate(0, -88);
+    leafShape(c, 52, 22, "#256b34");
+    c.restore();
+    // the new leaf comes out of a red sheath at the very top
+    c.fillStyle = "#7a2c33";
+    c.beginPath();
+    c.moveTo(0, -142); c.quadraticCurveTo(8, -112, 0, -92);
+    c.quadraticCurveTo(-8, -112, 0, -142);
+    c.closePath(); c.fill();
+  },
+  zz(c) {
+    pot(c, 32);
+    for (let i = -1; i <= 1; i++) {
+      c.save(); c.translate(i * 12, -8); c.rotate(i * 0.3);
+      c.strokeStyle = "#2c6b33"; c.lineWidth = 5; c.lineCap = "round";
+      c.beginPath(); c.moveTo(0, 0); c.lineTo(0, -104); c.stroke();
+      // leaflets in neat pairs the whole way up, smaller towards the tip
+      for (let p = 0; p < 5; p++) {
+        const y = -24 - p * 20, len = 19 - p * 1.6;
+        for (const s of [-1, 1]) {
+          c.save(); c.translate(0, y); c.rotate(s * 0.85);
+          c.fillStyle = "#1f5c2c";
+          c.strokeStyle = "#4f9c56"; c.lineWidth = 1.6;
+          c.beginPath(); c.ellipse(0, -len, len * 0.95, len * 0.42, 0, 0, Math.PI * 2);
+          c.fill(); c.stroke();
+          c.restore();
+        }
+      }
+      c.fillStyle = "#1f5c2c";
+      c.beginPath(); c.ellipse(0, -112, 8, 14, 0, 0, Math.PI * 2); c.fill();
+      c.restore();
+    }
+  },
+  orchid(c) {
+    pot(c, 30);
+    // two flat leaves lying low, the way a moth orchid always sits
+    for (const s of [-1, 1]) {
+      c.save(); c.translate(s * 6, -8); c.rotate(s * 1.35);
+      leafShape(c, 46, 22, "#2f6b3a");
+      c.restore();
+    }
+    c.strokeStyle = "#4f8b45"; c.lineWidth = 4; c.lineCap = "round";
+    c.beginPath();
+    c.moveTo(0, -14);
+    c.quadraticCurveTo(-34, -80, 34, -108);
+    c.stroke();
+    for (let i = 0; i < 4; i++) {
+      const t = 0.32 + i * 0.22;
+      const x = 2 * (1 - t) * t * -34 + t * t * 34;
+      const y = (1 - t) * (1 - t) * -14 + 2 * (1 - t) * t * -80 + t * t * -108;
+      c.save(); c.translate(x, y);
+      for (let p = 0; p < 5; p++) {
+        const a = (p / 5) * Math.PI * 2;
+        c.fillStyle = "#f2d6e4";
+        c.save(); c.rotate(a);
+        c.beginPath(); c.ellipse(0, -13, 8, 12, 0, 0, Math.PI * 2); c.fill();
+        c.restore();
+      }
+      c.fillStyle = "#d9558c";
+      c.beginPath(); c.arc(0, 0, 6, 0, Math.PI * 2); c.fill();
+      c.fillStyle = "#f5e06a";
+      c.beginPath(); c.arc(0, 0, 2.6, 0, Math.PI * 2); c.fill();
+      c.restore();
+    }
+  },
+  fern(c) {
+    pot(c, 32);
+    // a fountain of fronds — the ones on the left arch left, not right
+    for (let f = -3; f <= 3; f++) {
+      const dir = f < 0 ? -1 : 1;
+      c.save(); c.translate(0, -8); c.scale(dir, 1); c.rotate(Math.abs(f) * 0.32);
+      c.strokeStyle = "#3f7d3b"; c.lineWidth = 3.5; c.lineCap = "round";
+      c.beginPath();
+      c.moveTo(0, 0);
+      c.quadraticCurveTo(6, -52, 22, -98);
+      c.stroke();
+      for (let i = 1; i <= 9; i++) {
+        const t = i / 10;
+        const x = 2 * (1 - t) * t * 6 + t * t * 22;
+        const y = 2 * (1 - t) * t * -52 + t * t * -98;
+        const len = 16 * (1 - t * 0.6);
+        for (const s of [-1, 1]) {
+          c.save(); c.translate(x, y); c.rotate(s * 1.1 - 0.3);
+          c.fillStyle = "#43904a";
+          c.beginPath(); c.ellipse(s * len * 0.7, 0, len, len * 0.42, 0, 0, Math.PI * 2); c.fill();
+          c.restore();
+        }
+      }
+      c.restore();
+    }
+  },
+  christmascactus(c) {
+    pot(c, 32);
+    // chains of flat pads that arch over the rim and hang down the sides
+    function chain(c, x, y, ang, step, n) {
+      let px = x, py = y, a = ang;
+      for (let i = 0; i < n; i++) {
+        c.save(); c.translate(px, py); c.rotate(a);
+        c.fillStyle = i % 2 ? "#2f7a3b" : "#3a8c45";
+        c.beginPath(); c.ellipse(0, 11, 9, 13, 0, 0, Math.PI * 2); c.fill();
+        c.fillStyle = "#256633";
+        c.beginPath(); c.ellipse(0, 22, 4.5, 3, 0, 0, Math.PI * 2); c.fill();
+        c.restore();
+        px -= Math.sin(a) * 23;
+        py += Math.cos(a) * 23;
+        a += step;
+      }
+      return [px, py, a];
+    }
+    for (const [x, y, ang, step] of
+         [[-22, -10, 1.35, -0.22], [-8, -18, 1.15, -0.2],
+          [8, -18, -1.15, 0.2], [22, -10, -1.35, 0.22]]) {
+      const [ex, ey, ea] = chain(c, x, y, ang, step, 4);
+      c.save(); c.translate(ex, ey); c.rotate(ea);
+      c.fillStyle = "#e0559b";
+      for (const s of [-1, 0, 1]) {
+        c.beginPath();
+        c.moveTo(0, 2);
+        c.quadraticCurveTo(s * 10, 16, s * 6, 28);
+        c.quadraticCurveTo(0, 24, 0, 2);
+        c.closePath(); c.fill();
+      }
+      c.fillStyle = "#f37fb8";
+      c.beginPath(); c.ellipse(0, 14, 5.5, 11, 0, 0, Math.PI * 2); c.fill();
+      c.restore();
+    }
+  },
+  hearts(c) {
+    // a hanging pot, because string of hearts is grown to trail
+    c.fillStyle = "#b5653f";
+    c.beginPath();
+    c.moveTo(-30, -100); c.lineTo(30, -100);
+    c.lineTo(22, -66); c.lineTo(-22, -66);
+    c.closePath(); c.fill();
+    c.fillStyle = "#9c5334";
+    c.fillRect(-32, -104, 64, 6);
+    for (const [dx, wob] of [[-24, -1], [-8, 1], [8, -1], [24, 1]]) {
+      c.strokeStyle = "#6b5a4a"; c.lineWidth = 1.8;
+      c.beginPath();
+      c.moveTo(dx, -66);
+      c.quadraticCurveTo(dx + wob * 14, -10, dx + wob * 6, 96);
+      c.stroke();
+      for (let i = 1; i <= 7; i++) {
+        const t = i / 7.4;
+        const x = 2 * (1 - t) * t * (dx + wob * 14) + t * t * (dx + wob * 6) + (1 - t) * (1 - t) * dx;
+        const y = (1 - t) * (1 - t) * -66 + 2 * (1 - t) * t * -10 + t * t * 96;
+        heart(c, x + (i % 2 ? 7 : -7), y, 6.5, i % 3 === 0 ? "#cfd2c0" : "#4f7a52");
+      }
+    }
+  },
+  forkedsundew(c) {
+    pot(c, 30);
+    for (let i = -2; i <= 2; i++) {
+      c.save(); c.translate(i * 11, -8); c.rotate(i * 0.24);
+      c.strokeStyle = "#79b23f"; c.lineWidth = 6; c.lineCap = "round";
+      c.beginPath(); c.moveTo(0, 0); c.lineTo(0, -54); c.stroke();
+      // the leaf forks in two, which is where the name comes from
+      for (const s of [-1, 1]) {
+        c.save(); c.translate(0, -54); c.rotate(s * 0.42);
+        c.strokeStyle = "#8cc44c"; c.lineWidth = 6;
+        c.beginPath(); c.moveTo(0, 0); c.lineTo(s * 6, -50); c.stroke();
+        dewDrops(c, s * 2 - 6, -8, s * 6 - 6, -50, 4, "#e8536f");
+        dewDrops(c, s * 2 + 6, -14, s * 6 + 6, -50, 4, "#e8536f");
+        c.restore();
+      }
+      c.restore();
+    }
+  },
+  butterwort(c) {
+    pot(c, 32);
+    // a flat rosette of pale, greasy-looking leaves seen from above
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      c.save(); c.translate(0, -12); c.rotate(a);
+      c.fillStyle = i % 2 ? "#b9d88a" : "#a8cd77";
+      c.beginPath(); c.ellipse(0, -26, 15, 26, 0, 0, Math.PI * 2); c.fill();
+      c.restore();
+    }
+    c.fillStyle = "#8fbb63";
+    c.beginPath(); c.arc(0, -12, 11, 0, Math.PI * 2); c.fill();
+    // the flower on its long bare stalk
+    c.strokeStyle = "#7fa85c"; c.lineWidth = 4; c.lineCap = "round";
+    c.beginPath(); c.moveTo(0, -16); c.quadraticCurveTo(-16, -64, -8, -96); c.stroke();
+    c.save(); c.translate(-8, -96);
+    for (let p = 0; p < 5; p++) {
+      const a = (p / 5) * Math.PI * 2 - 1.6;
+      c.save(); c.rotate(a);
+      c.fillStyle = "#8e7cc3";
+      c.beginPath(); c.ellipse(0, -12, 8, 12, 0, 0, Math.PI * 2); c.fill();
+      c.restore();
+    }
+    c.fillStyle = "#f5f0d0";
+    c.beginPath(); c.arc(0, 0, 5, 0, Math.PI * 2); c.fill();
+    c.restore();
+  },
+  bladderwort(c) {
+    // wet moss, because a bladderwort is always grown soaking
+    c.fillStyle = "#6f9b55";
+    c.beginPath(); c.ellipse(0, 6, 78, 22, 0, 0, Math.PI * 2); c.fill();
+    c.fillStyle = "#84b163";
+    for (let i = 0; i < 14; i++) {
+      const x = -70 + i * 10.5;
+      c.beginPath(); c.arc(x, -2 + (i % 3) * 4, 8, 0, Math.PI * 2); c.fill();
+    }
+    c.strokeStyle = "#5f9142"; c.lineWidth = 2.4; c.lineCap = "round";
+    for (let i = 0; i < 16; i++) {
+      const x = -62 + i * 8;
+      c.beginPath();
+      c.moveTo(x, 0);
+      c.quadraticCurveTo(x + (i % 2 ? 5 : -5), -16, x + (i % 2 ? 9 : -9), -32);
+      c.stroke();
+    }
+    // the traps are underground, so what you actually see are the flowers
+    for (const [x, h] of [[-34, -78], [4, -96], [38, -70]]) {
+      c.strokeStyle = "#6fa04c"; c.lineWidth = 3;
+      c.beginPath(); c.moveTo(x, -4); c.lineTo(x, h); c.stroke();
+      c.fillStyle = "#f2c53d";
+      c.beginPath(); c.ellipse(x, h - 6, 13, 10, 0, 0, Math.PI * 2); c.fill();
+      c.fillStyle = "#e0a81f";
+      c.beginPath(); c.ellipse(x, h + 2, 9, 7, 0, 0, Math.PI * 2); c.fill();
+      c.fillStyle = "#8a5a12";
+      c.beginPath(); c.arc(x, h - 4, 3, 0, Math.PI * 2); c.fill();
+    }
+  },
+  darlingtonia(c) {
+    pot(c, 32);
+    // hooded tubes that twist round like a snake about to strike
+    for (const [x, h, s] of [[-34, 78, -1], [0, 108, 1], [34, 86, -1]]) {
+      c.save(); c.translate(x, -6);
+      const g = c.createLinearGradient(-12, 0, 12, 0);
+      g.addColorStop(0, "#4f7f3d"); g.addColorStop(0.5, "#93c06d"); g.addColorStop(1, "#4a7538");
+      c.fillStyle = g;
+      c.beginPath();
+      c.moveTo(-10, 0);
+      c.quadraticCurveTo(-16, -h * 0.6, -9, -h);
+      c.lineTo(9, -h);
+      c.quadraticCurveTo(16, -h * 0.6, 10, 0);
+      c.closePath(); c.fill();
+      c.save(); c.translate(0, -h);
+      // the balloon of a hood, leaning over to one side
+      c.fillStyle = "#7fae5e";
+      c.beginPath(); c.ellipse(s * 5, -11, 20, 17, s * 0.3, 0, Math.PI * 2); c.fill();
+      c.fillStyle = "rgba(246,250,236,.72)";
+      for (const [wx, wy] of [[-6, -18], [6, -14], [0, -8], [-12, -10], [12, -21]]) {
+        c.beginPath(); c.ellipse(s * 4 + wx, wy, 4, 3, 0, 0, Math.PI * 2); c.fill();
+      }
+      // the mouth is underneath, facing forward, not on top
+      c.fillStyle = "#395a2b";
+      c.beginPath(); c.ellipse(-s * 7, -1, 9, 5.5, -s * 0.2, 0, Math.PI * 2); c.fill();
+      // and the forked tongue hangs down out of it
+      c.fillStyle = "#b0432f";
+      c.save(); c.translate(-s * 7, 1);
+      c.beginPath();
+      c.moveTo(-3, 0);
+      c.lineTo(-13, 20); c.lineTo(-4, 15);
+      c.lineTo(0, 25); c.lineTo(4, 15);
+      c.lineTo(13, 20); c.lineTo(3, 0);
+      c.closePath(); c.fill();
+      c.restore();
+      c.restore();
+      c.restore();
+    }
+  },
+  cephalotus(c) {
+    pot(c, 32);
+    // flat ordinary leaves first, then the little jugs in front
+    for (let i = 0; i < 6; i++) {
+      const a = -1.4 + (i / 5) * 2.8;
+      c.save(); c.translate(0, -10); c.rotate(a);
+      leafShape(c, 44, 16, "#5d9c47");
+      c.restore();
+    }
+    for (const [x, y, s] of [[-38, -6, 1], [-12, -14, 1.15], [16, -10, 1.05], [40, -2, 0.9]]) {
+      c.save(); c.translate(x, y); c.scale(s, s); c.rotate((x / 90) * 0.5);
+      const g = c.createLinearGradient(-14, 0, 14, 0);
+      g.addColorStop(0, "#6b2f27"); g.addColorStop(0.5, "#b4523c"); g.addColorStop(1, "#652c25");
+      c.fillStyle = g;
+      c.beginPath();
+      c.moveTo(-13, 0);
+      c.quadraticCurveTo(-17, -18, -9, -28);
+      c.quadraticCurveTo(0, -33, 9, -28);
+      c.quadraticCurveTo(17, -18, 13, 0);
+      c.closePath(); c.fill();
+      // the ribs down the front, which a Cephalotus really has
+      c.strokeStyle = "rgba(60,25,20,.5)"; c.lineWidth = 2;
+      for (const rx of [-8, 0, 8]) {
+        c.beginPath(); c.moveTo(rx, -2); c.lineTo(rx * 1.1, -24); c.stroke();
+      }
+      c.fillStyle = "#8f3a2c";
+      c.beginPath(); c.ellipse(0, -28, 11, 4, 0, 0, Math.PI * 2); c.fill();
+      c.fillStyle = "#c86a4a";
+      c.save(); c.translate(0, -30); c.rotate(-0.4);
+      c.beginPath(); c.ellipse(0, -6, 11, 6, 0, 0, Math.PI * 2); c.fill();
+      c.restore();
+      c.restore();
+    }
+  },
+  heliamphora(c) {
+    pot(c, 32);
+    // narrow tubes that flare open at the top, from the cloud mountains
+    for (const [x, h] of [[-36, 74], [-12, 100], [14, 94], [38, 70]]) {
+      c.save(); c.translate(x, -6); c.rotate((x / 120) * 0.5);
+      const g = c.createLinearGradient(-14, 0, 14, 0);
+      g.addColorStop(0, "#5e8a45"); g.addColorStop(0.45, "#a8c67c"); g.addColorStop(1, "#7a5340");
+      c.fillStyle = g;
+      c.beginPath();
+      c.moveTo(-7, 0);
+      c.quadraticCurveTo(-12, -h * 0.5, -15, -h);
+      c.lineTo(15, -h);
+      c.quadraticCurveTo(12, -h * 0.5, 7, 0);
+      c.closePath(); c.fill();
+      c.fillStyle = "#9c4a38";
+      c.beginPath(); c.ellipse(0, -h, 15, 5, 0, 0, Math.PI * 2); c.fill();
+      // the little nectar spoon on the back of the mouth
+      c.fillStyle = "#c85f45";
+      c.beginPath(); c.ellipse(4, -h - 8, 6, 5, 0.3, 0, Math.PI * 2); c.fill();
+      // a slit near the top, where rainwater drains out
+      c.strokeStyle = "rgba(70,40,30,.45)"; c.lineWidth = 2;
+      c.beginPath(); c.moveTo(-3, -h * 0.72); c.lineTo(3, -h * 0.72); c.stroke();
+      c.restore();
+    }
+  },
+  byblis(c) {
+    pot(c, 30);
+    c.strokeStyle = "#6fa348"; c.lineWidth = 5; c.lineCap = "round";
+    c.beginPath(); c.moveTo(0, -6); c.lineTo(0, -70); c.stroke();
+    // thread-thin leaves sticking out everywhere, each one beaded with dew
+    const cols = ["#e8536f", "#f2a03d", "#f2e05a", "#7fd4e8", "#b98fd8"];
+    for (let i = 0; i < 14; i++) {
+      const a = -1.35 + (i / 13) * 2.7;
+      const len = 64 + (i % 3) * 12;
+      c.save(); c.translate(0, -18 - (i % 4) * 12); c.rotate(a);
+      c.strokeStyle = "#8cc456"; c.lineWidth = 2.4;
+      c.beginPath(); c.moveTo(0, 0); c.quadraticCurveTo(4, -len * 0.6, 0, -len); c.stroke();
+      for (let d = 1; d <= 5; d++) {
+        c.fillStyle = cols[(i + d) % cols.length];
+        c.beginPath(); c.arc(2, -d * (len / 5.4), 2.8, 0, Math.PI * 2); c.fill();
+      }
+      c.restore();
+    }
+    for (const [x, y] of [[-26, -74], [22, -84]]) {
+      c.save(); c.translate(x, y);
+      for (let p = 0; p < 5; p++) {
+        c.save(); c.rotate((p / 5) * Math.PI * 2);
+        c.fillStyle = "#a58fd8";
+        c.beginPath(); c.ellipse(0, -10, 7, 10, 0, 0, Math.PI * 2); c.fill();
+        c.restore();
+      }
+      c.fillStyle = "#f5e06a";
+      c.beginPath(); c.arc(0, 0, 4, 0, Math.PI * 2); c.fill();
+      c.restore();
+    }
+  },
+  drosophyllum(c) {
+    pot(c, 32);
+    // dry sandy soil on top, because this one hates a wet tray
+    c.fillStyle = "#d8c9a3";
+    c.beginPath(); c.ellipse(0, -4, 33, 7, 0, 0, Math.PI * 2); c.fill();
+    c.strokeStyle = "#6f9b4a"; c.lineWidth = 6; c.lineCap = "round";
+    c.beginPath(); c.moveTo(0, -8); c.lineTo(-2, -52); c.stroke();
+    // leaves that curl outwards and back on themselves
+    for (let i = 0; i < 11; i++) {
+      const a = -1.4 + (i / 10) * 2.8;
+      c.save(); c.translate(-2, -46); c.rotate(a);
+      c.strokeStyle = "#79ab4f"; c.lineWidth = 4; c.lineCap = "round";
+      c.beginPath();
+      c.moveTo(0, 0);
+      c.quadraticCurveTo(14, -34, 4, -62);
+      c.stroke();
+      dewDrops(c, 8, -12, 8, -56, 5, "#f0f5d8");
+      c.restore();
+    }
+    for (const [x, y] of [[-30, -78], [26, -88], [0, -100]]) {
+      c.save(); c.translate(x, y);
+      for (let p = 0; p < 5; p++) {
+        c.save(); c.rotate((p / 5) * Math.PI * 2);
+        c.fillStyle = "#f2d14b";
+        c.beginPath(); c.ellipse(0, -11, 8, 11, 0, 0, Math.PI * 2); c.fill();
+        c.restore();
+      }
+      c.fillStyle = "#d8a51f";
+      c.beginPath(); c.arc(0, 0, 4.5, 0, Math.PI * 2); c.fill();
+      c.restore();
+    }
   }
 };
 
@@ -675,7 +1593,9 @@ viewHome.innerHTML =
   '<input type="file" id="filePick" accept="image/*" hidden>';
 
 document.getElementById("homeNote").innerHTML =
-  "<b>What this can and cannot do.</b> The pictures and all the care advice here are real. " +
+  "<b>What this can and cannot do.</b> There are thirty-six plants in here — twelve that live " +
+  "outdoors, twelve that live in the house and twelve that eat insects. The pictures and all " +
+  "the care advice are real. " +
   "The identifying is not a trained model yet — it compares the colours in your photo " +
   "against the library's own pictures and offers the nearest of each kind to choose from. " +
   "A proper model that recognises a plant on its own is the next piece of work.";
@@ -802,25 +1722,24 @@ goBtn.addEventListener("click", async () => {
   const scored = PLANTS.map(p => ({ p: p, score: howClose(p, shot) }))
                        .sort((a, b) => a.score - b.score);
 
-  // The closest one from each kind, so a carnivorous plant is always offered.
-  // Ranking across all twelve buried them every time, because a lot of plants
-  // are green and the greenest-looking ones won on colour alone.
+  // The two closest from each kind, so a carnivorous plant is always offered.
+  // Ranking across all thirty-six buried them every time, because a lot of
+  // plants are green and the greenest-looking ones won on colour alone.
   const best = [];
   for (const key of ["carnivorous", "house", "outside"]) {
-    const top = scored.find(s => s.p.group === key);
-    if (top) best.push(top);
+    best.push(...scored.filter(s => s.p.group === key).slice(0, 2));
   }
   best.sort((a, b) => a.score - b.score);
 
   idResult.innerHTML =
     '<h2 class="section">Closest matches</h2>' +
     '<p style="margin:0 0 14px;color:#5c6f5c;font-size:15px">' +
-    'The nearest one of each kind. Pick whichever looks like your plant and ' +
+    'The nearest two of each kind. Pick whichever looks like your plant and ' +
     'I will tell you how to look after it.</p>' +
     '<div class="guesses" id="guesses"></div>' +
     '<p style="margin:14px 0 0;color:#5c6f5c;font-size:14px">' +
     'None of them right? <button class="backBtn" style="margin:0" id="seeAll">' +
-    'Look through all twelve</button></p>';
+    'Look through all thirty-six</button></p>';
 
   const wrap = document.getElementById("guesses");
   best.forEach((s, i) => {
