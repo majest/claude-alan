@@ -11,6 +11,39 @@ they are the way they are, and the "why" is the useful part.
 
 ---
 
+## Where the instructions live
+
+Claude reads every `CLAUDE.md` from the current folder upwards and merges them,
+so a session here gets more than this one file. Nearest wins on its own
+subject: this file is final on how to build a project in this repo, and the
+ones above only add what a single repo cannot know.
+
+**In this repo** — public, so anyone can read them:
+
+| | |
+| --- | --- |
+| `CLAUDE.md` | this file: how to build here, and how to work with Alan |
+| `AI-TOOLBOX.md` | every AI capability available, with measured costs and code |
+| `README.md` | what is in the repo |
+| `projects/<name>/README.md` | optional, per project |
+
+**Above this repo**, on Artur's computer and deliberately *not* published:
+
+| | |
+| --- | --- |
+| the workspace `CLAUDE.md` | how the two children's repos and the website relate, how publishing works, the machine at home, the cloud helper |
+| the top-level `CLAUDE.md` | what else lives on that computer, and what must never be touched |
+
+**On the machine at home**, reached over SSH, a separate tree entirely — it does
+not inherit from anything here, and for work done on that machine **its own
+rules win**. The workspace notes say how to reach it.
+
+If those upper files are missing, this repo has been cloned somewhere else.
+Everything needed to build a project is still here. Anything about the machine
+at home or the cloud is not — **say so rather than inventing it.**
+
+---
+
 ## Working with Alan
 
 **Alan is 12.** Treat him as someone building real things, because he is —
