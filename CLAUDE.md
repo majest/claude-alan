@@ -194,29 +194,63 @@ Alan might want a project that uses AI — a model that generates images, writes
 text, or classifies something. That's possible, and it works differently from
 everything else here.
 
-**The published page must never call the machine at home.** Three reasons, and
-any one of them is enough:
+**The published page must never call the machine at home *directly*.** Three
+reasons, any one of them fatal:
 
-- The page runs on other people's devices, at school and at friends' houses. A
-  page that depends on a machine at home is broken for everyone but Alan.
-- The site is served over HTTPS, and browsers block HTTPS pages from calling
-  plain HTTP addresses.
-- Home addresses like `192.168.x.x` don't exist outside the house anyway.
+- The page runs on other people's devices, at school and at friends' houses.
+  A home address like `192.168.x.x` does not exist for any of them.
+- The site is HTTPS, and browsers block HTTPS pages from calling plain HTTP.
+- Browsers restrict public pages reaching private addresses regardless.
 
-(The multiplayer service further down is a different thing: it's on the public
-internet over HTTPS, so any page anywhere can reach it. The rule here is about
-the machine at home, not about servers in general.)
+But "not directly" is not "not at all". There are two ways to use it.
 
-So the model runs **ahead of time**, elsewhere, and only its output is
-committed here:
+### Ahead of time — usually the right answer
 
-- images generated once and saved as files
-- text, dialogue or level data generated once and saved as JSON
-- a small model converted to run *inside the browser* with ONNX Runtime Web or
-  TensorFlow.js — the page does the inference itself, no server involved
+The model runs on that machine whenever, and the **output** is committed here as
+an ordinary file: images it drew, level data or dialogue as JSON, or a small
+model converted to run inside the browser with ONNX Runtime Web or
+TensorFlow.js.
 
-That last one is the interesting option and the honest way for a page to "use
-AI". It keeps working on a phone, offline, and in ten years.
+The page then depends on nothing. It works offline, on a phone, in ten years.
+Prefer this unless the content genuinely has to differ per player.
+
+### On demand — leave a job, don't make a call
+
+When something really must be generated while someone plays, the page still
+never reaches the machine. It leaves a job in AWS and the machine comes and
+fetches it:
+
+```
+  your page              AWS                     the machine at home
+  ─────────              ───                     ───────────────────
+  submit a job  ──▶  queue (SQS)
+                         │
+                         │    the worker asks the queue for work
+                         ▼    (it is never told to do anything)
+                   ┌─────────────────────┐
+                   │ runs the model, GPU │
+                   └──────────┬──────────┘
+                              ▼
+  fetch result  ◀──────  file in S3  ◀────┘
+```
+
+**The machine pulls work; nothing ever pushes to it.** That is the whole
+security story: it sits behind the home router with no ports open, so nothing
+on the internet can find it, and there is nothing there to attack. This exact
+pattern already runs in this house for a real service, so it is proven — not an
+idea someone is trying out on Alan's game.
+
+Two honest limits to tell him about:
+
+- **The machine has to be switched on.** If it isn't, the job waits. The game
+  must stay playable and say "still thinking", not look broken.
+- **It takes a while** — think tens of seconds to a few minutes, not frames.
+  Fine for "draw me a monster before the level starts". Useless inside a game
+  loop.
+
+The queue and bucket for this **are not built yet.** The pattern works; the
+plumbing for the kids' games does not exist. Say so rather than writing code
+against something imaginary.
 
 There's a machine at home set up for this work. How to reach it and how to use
 it are in the family notes on Artur's computer — **deliberately not in this
