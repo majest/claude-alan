@@ -111,9 +111,12 @@ The rules, and the reasons:
   it's wrong for this repo.
 - **It must run from the file.** Double-click `index.html` and use it. Test
   that way before you're done.
-- **Nothing fetched from the internet** except Google Fonts. No CDN scripts, no
+- **Nothing fetched from the internet** except Google Fonts, and the pinned AI
+  libraries and models listed in `AI-TOOLBOX.md`. No other CDN scripts, no
   hotlinked images. Draw things in code or inline them as `data:` URIs. Outside
   links rot, and then the project is broken years later for no good reason.
+  The AI models are the deliberate exception: a model cannot be written by hand
+  or inlined, so its source is pinned to an exact version instead.
 - **It has to work on a phone.** Include the viewport meta tag, and check a
   narrow window — nothing should overflow sideways.
 
@@ -204,7 +207,18 @@ reasons, any one of them fatal:
 
 But "not directly" is not "not at all". There are two ways to use it.
 
-### Ahead of time — usually the right answer
+### In the browser — start here
+
+Most of it needs no server and no machine at home. Hand and body tracking,
+gesture recognition, speech in and out, image classification, sentiment — all
+run on the player's own device, free, private, no key.
+
+**`AI-TOOLBOX.md` lists every one that's available here**, with measured sizes
+and load times and code to copy. Read it before reaching for anything else.
+The camera-based ones are 3–8 MB and ready in under a second; the text and
+image transformers are 64–84 MB, which is a real wait on a phone.
+
+### Ahead of time — for anything too heavy for the browser
 
 The model runs on that machine whenever, and the **output** is committed here as
 an ordinary file: images it drew, level data or dialogue as JSON, or a small
