@@ -21,6 +21,10 @@ cat BUILDING.md      # how projects work here — read before making anything
 cat AI-TOOLBOX.md    # every AI capability, with code — read before any AI work
 ```
 
+**Read them again every session, and again before starting a new project.**
+Not from memory — open them. They change, and a session going on what it
+remembers from last time is working from a version that no longer exists.
+
 **`BUILDING.md` is not a reference to dip into. Read it at the start, before
 making, changing or pushing anything.** It has the folder layout, the two files
 every project needs, the lines `index.html` must begin with, how pushing works,
