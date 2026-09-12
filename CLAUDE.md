@@ -194,14 +194,18 @@ Alan might want a project that uses AI — a model that generates images, writes
 text, or classifies something. That's possible, and it works differently from
 everything else here.
 
-**The published page must never call a server.** Three reasons, and any one of
-them is enough:
+**The published page must never call the machine at home.** Three reasons, and
+any one of them is enough:
 
 - The page runs on other people's devices, at school and at friends' houses. A
   page that depends on a machine at home is broken for everyone but Alan.
 - The site is served over HTTPS, and browsers block HTTPS pages from calling
   plain HTTP addresses.
 - Home addresses like `192.168.x.x` don't exist outside the house anyway.
+
+(The multiplayer service further down is a different thing: it's on the public
+internet over HTTPS, so any page anywhere can reach it. The rule here is about
+the machine at home, not about servers in general.)
 
 So the model runs **ahead of time**, elsewhere, and only its output is
 committed here:
@@ -242,13 +246,43 @@ It is *not* right for fast action games where players move continuously. That
 needs a persistent connection (WebSockets), which is a bigger piece of work —
 worth doing if Alan wants it, but as its own project, not bolted on.
 
-Two rules:
+The endpoint:
 
-- Using the service that already exists is fine any time.
-- **Creating or changing anything out there needs `Artur:`**, because it costs
-  money and runs under his account.
+```
+https://pr27r9l9jc.execute-api.eu-west-2.amazonaws.com
+```
 
-The address and how to call it are in the family notes, not in this repo.
+Two operations, both `POST`, to the same URL:
+
+```js
+const ROOMS = "https://pr27r9l9jc.execute-api.eu-west-2.amazonaws.com";
+
+// append a move
+await fetch(ROOMS, {
+  method: "POST",
+  headers: { "content-type": "application/json" },
+  body: JSON.stringify({ room: "alan-v-adam", move: { square: 4, mark: "x" } }),
+});
+
+// read everything newer than `since`; the reply is { moves: [...], now: N }
+// keep that `now` and send it as the next `since`
+const res = await fetch(ROOMS, {
+  method: "POST",
+  headers: { "content-type": "application/json" },
+  body: JSON.stringify({ room: "alan-v-adam", since }),
+});
+```
+
+Limits: room names are lowercase letters, numbers and hyphens, up to 40
+characters; one move must be under 4 KB; a read returns at most 200 moves;
+everything is deleted after an hour.
+
+**Always stop polling when the game ends or the page is hidden** — a forgotten
+loop runs all night:
+
+```js
+addEventListener("pagehide", stop);
+```
 
 **Anything sent through it is readable by anyone** who knows the room name.
 It's for game moves. Never names, never anything private.
