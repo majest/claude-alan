@@ -1,0 +1,879 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plant Finder</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100%; background: #f2f6ef; }
+  body {
+    font-family: ui-rounded, "Avenir Next", "Segoe UI", system-ui, sans-serif;
+    color: #1d2a1f;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  header {
+    background: #1f4d2c;
+    color: #eefbef;
+    padding: 18px 20px 0;
+  }
+  header h1 { margin: 0 0 4px; font-size: 26px; letter-spacing: .3px; }
+  header p { margin: 0 0 14px; font-size: 15px; color: rgba(238,251,239,.75); }
+
+  /* ---- the tabs ---- */
+  .tabs { display: flex; gap: 8px; flex-wrap: wrap; }
+  .tab {
+    appearance: none; border: 0; cursor: pointer;
+    font-family: inherit; font-size: 16px; font-weight: 700;
+    padding: 11px 20px; border-radius: 12px 12px 0 0;
+    background: rgba(255,255,255,.14); color: #eefbef;
+  }
+  .tab:hover { background: rgba(255,255,255,.24); }
+  .tab.on { background: #f2f6ef; color: #1f4d2c; }
+  .tab.back { background: rgba(255,255,255,.08); }
+
+  main { padding: 22px 20px 60px; max-width: 1120px; margin: 0 auto; }
+  .view[hidden] { display: none; }
+
+  /* ---- the identify page ---- */
+  .identify {
+    display: flex; gap: 28px; align-items: flex-start;
+    justify-content: center; flex-wrap: wrap;
+  }
+  .identify.done { justify-content: space-between; }
+  /* before you press Identify there is only the box, so it sits in the middle */
+  #idResult:empty { display: none; }
+
+  .dropCol { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+
+  /* the white box you put a picture in: taller than it is wide */
+  .dropBox {
+    width: 300px; height: 400px;
+    background: #ffffff;
+    border: 3px dashed #b9ccb6;
+    border-radius: 16px;
+    display: flex; align-items: center; justify-content: center;
+    text-align: center; padding: 18px; cursor: pointer;
+    overflow: hidden; position: relative;
+  }
+  .dropBox:hover, .dropBox.over { border-color: #4caf50; background: #fbfffb; }
+  .dropBox p { margin: 0; color: #6d7d6c; font-size: 15px; line-height: 1.5; }
+  .dropBox img { width: 100%; height: 100%; object-fit: contain; }
+
+  .goBtn {
+    width: 300px; padding: 15px; border: 0; cursor: pointer;
+    font-family: inherit; font-size: 19px; font-weight: 800;
+    background: #7ed957; color: #10300f;
+    border-radius: 12px;
+  }
+  .goBtn:hover { background: #6ecb46; }
+  .goBtn:disabled { background: #cfe3c7; color: #7d8f7c; cursor: default; }
+
+  /* while it is thinking */
+  .thinking { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 40px 0; }
+  .spinner {
+    width: 56px; height: 56px; border-radius: 50%;
+    border: 6px solid #d8e6d4; border-top-color: #3f8f4a;
+    animation: spin 0.9s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .guesses { display: flex; flex-direction: column; gap: 12px; max-width: 520px; }
+  .guess {
+    display: flex; align-items: center; gap: 14px; width: 100%;
+    padding: 12px; border-radius: 14px; cursor: pointer; text-align: left;
+    background: #fff; border: 2px solid #dce8d8; font-family: inherit;
+  }
+  .guess:hover { border-color: #4caf50; }
+  .guess canvas { width: 76px; height: 76px; flex: none; border-radius: 10px; background: #eef5ec; }
+  .guess .gName { font-size: 18px; font-weight: 800; }
+  .guess .gSub { font-size: 14px; color: #6d7d6c; }
+
+  /* ---- the write-up ---- */
+  .page { flex: 1 1 460px; min-width: 300px; max-width: 620px; }
+  .page h2 {
+    font-size: 32px; margin: 0 0 4px;
+    font-weight: 800; text-decoration: underline; text-underline-offset: 5px;
+  }
+  .page .latin { margin: 0 0 18px; font-style: italic; color: #6d7d6c; font-size: 16px; }
+  .page h3 { margin: 22px 0 6px; font-size: 18px; color: #1f4d2c; }
+  .page p { margin: 0; font-size: 16px; line-height: 1.62; }
+  .pests {
+    margin-top: 22px; padding: 14px 16px; border-radius: 12px;
+    background: #fff6e5; border-left: 5px solid #e5a600; font-size: 16px; line-height: 1.6;
+  }
+
+  .shot { flex: 0 0 340px; }
+  /* once you have pressed Identify the box stops being a drop target and just
+     shows your picture, over on the right, still big */
+  .dropCol.asShot .dropBox {
+    width: 340px; height: 440px; border-style: solid; border-color: #dce8d8; cursor: default;
+  }
+  .dropCol.asShot .goBtn { display: none; }
+  .dropCol.asShot .shotCap { display: block; }
+  .shotCap { display: none; font-size: 14px; color: #6d7d6c; }
+  .shot img, .shot canvas {
+    width: 100%; border-radius: 16px; background: #fff;
+    border: 2px solid #dce8d8;
+  }
+  .shot .cap { margin-top: 8px; font-size: 14px; color: #6d7d6c; text-align: center; }
+
+  /* ---- the picture walls ---- */
+  .grid {
+    display: grid; gap: 16px;
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  }
+  .card {
+    background: #fff; border: 2px solid #dce8d8; border-radius: 16px;
+    padding: 12px; cursor: pointer; font-family: inherit; text-align: center;
+  }
+  .card:hover { border-color: #4caf50; transform: translateY(-2px); }
+  .card canvas { width: 100%; aspect-ratio: 1 / 1; }
+  .card .cName { font-size: 16px; font-weight: 800; margin-top: 6px; }
+  .card .cLatin { font-size: 13px; color: #6d7d6c; font-style: italic; }
+
+  h2.section { font-size: 22px; margin: 0 0 14px; }
+  .note {
+    background: #eaf3e7; border-left: 5px solid #4caf50;
+    padding: 12px 15px; border-radius: 10px;
+    font-size: 15px; line-height: 1.6; margin: 0 0 20px; color: #33513a;
+  }
+  .backBtn {
+    appearance: none; border: 2px solid #cfe0ca; background: #fff; cursor: pointer;
+    font-family: inherit; font-size: 15px; font-weight: 700; color: #1f4d2c;
+    padding: 9px 16px; border-radius: 10px; margin-bottom: 16px;
+  }
+  .backBtn:hover { border-color: #4caf50; }
+</style>
+
+<header>
+  <h1>Plant Finder</h1>
+  <p>Find out what a plant is, and how to keep it alive.</p>
+  <div class="tabs" id="tabs"></div>
+</header>
+
+<main>
+  <div class="view" id="viewHome"></div>
+  <div class="view" id="viewGrid" hidden></div>
+  <div class="view" id="viewPage" hidden></div>
+</main>
+
+<script>
+// ---------------------------------------------------------------------------
+// The plants. Everything written here is real care advice — a page that makes
+// things up would get someone's plant killed.
+//
+//   look   roughly what colour the plant is, used for the rough guess
+//   care   the four things you need to know, in the order Alan asked for
+// ---------------------------------------------------------------------------
+const PLANTS = [
+  // ---------------------------------------------------- house plants
+  {
+    id: "monstera", group: "house", name: "Swiss Cheese Plant",
+    latin: "Monstera deliciosa", draw: "monstera",
+    look: { green: 0.62, dark: 0.45, colour: "#2f7d3b" },
+    water: "Put your finger about two centimetres into the soil. If it comes out dry, give it a good soak until water runs out of the bottom, then tip away whatever collects in the saucer. If the soil is still moist, leave it alone — a Monstera hates sitting in water, and soggy roots rot far faster than dry ones.",
+    light: "It wants bright light but not direct midday sun, which scorches pale patches onto the leaves. A spot a metre or two back from a window is about right. It does not need a winter dormancy, but it will grow much more slowly from November to February, so water it less often then.",
+    grow: "Cut a piece of stem just below a node — the little bump where a leaf joins, often with a brown root nub beside it. A cutting without a node will never root, however long you wait. Stand it in water or damp moss somewhere warm and roots appear in three to six weeks. It takes about two years before the new plant has the big split leaves the parent has; young leaves are heart-shaped and solid, and that is normal.",
+    clean: "Wipe each leaf with a damp cloth every few weeks, holding the leaf from underneath so it does not bend. Dust settles thickly on leaves this size and blocks the light the plant needs to feed itself. To keep it tidy, cut just above a node and it will branch from there. Prune in spring or summer while it is growing, and stop by early autumn so it is not pushing out soft new growth going into winter.",
+    pests: "Look under the leaves for spider mites — fine webbing and tiny pale speckles — and wipe them off with soapy water as soon as you see them. Keep a new plant apart from the others for a couple of weeks, because most collections are wiped out by something that arrived on a plant nobody checked."
+  },
+  {
+    id: "snake", group: "house", name: "Snake Plant",
+    latin: "Dracaena trifasciata", draw: "snake",
+    look: { green: 0.55, dark: 0.55, colour: "#3a6b3a" },
+    water: "This is the one plant most people kill with kindness. Push your finger two centimetres into the soil: if there is any moisture at all, walk away. Only water when the soil is dry right through, which in winter can mean once every six weeks. When you do water it, soak it properly and let every drop drain away.",
+    light: "It will survive in a dim corner and grow well in bright light, so almost anywhere in a house suits it. Direct sun through glass all afternoon can bleach the leaves. It needs no winter dormancy, but it more or less stops growing when it is cold, which is exactly when overwatering kills it.",
+    grow: "Cut a leaf into pieces about eight centimetres long, keeping track of which end was the bottom — a piece planted upside down will never root. Let the cut dry for a day, then stand the bottom end in barely damp compost. Roots take a month or two and a new shoot can take six months. Splitting a big plant at the roots is far quicker and gives you a full-sized plant straight away.",
+    clean: "Wipe the flat leaves down with a damp cloth now and then; they collect a surprising amount of dust and it dulls the light reaching them. There are no nodes to prune to — if a leaf is damaged, cut the whole leaf off at soil level rather than trimming the tip, because a cut tip stays blunt and brown forever. Tidy it up in spring, and leave it alone over winter.",
+    pests: "Mealybugs hide where the leaves meet the soil and look like tiny blobs of cotton wool; dab them with a cotton bud dipped in soapy water. Check a new plant before it joins the shelf, because mealybugs spread along a row of pots quickly."
+  },
+  {
+    id: "spider", group: "house", name: "Spider Plant",
+    latin: "Chlorophytum comosum", draw: "spider",
+    look: { green: 0.68, dark: 0.3, colour: "#57a85c" },
+    water: "Water when the top two centimetres feel dry to your finger, and let the pot drain. Spider plants store water in fat white roots, so they forgive a missed week easily. If the leaf tips turn brown and crispy, that is usually the fluoride and chlorine in tap water building up — rainwater or water left standing overnight fixes it.",
+    light: "Bright light without much direct sun keeps the stripes strong; deep shade makes the leaves go plain green and floppy. No winter dormancy is needed, though growth slows right down when the light gets low, so ease off the watering.",
+    grow: "This is the easiest plant in the house to copy. It sends out long stems with baby plants on the ends, already growing little white roots. Sit one on top of a pot of compost, still attached to the parent, and pin it down. Once it has rooted after two or three weeks, snip the stem. It looks just like the parent within a few months.",
+    clean: "Run a damp cloth along each leaf from base to tip every few weeks so dust does not build up and dim the light. There are no nodes to worry about — just cut any brown or tatty leaf right off at the base. Trim whenever it needs it in spring and summer, and leave it be in the depths of winter.",
+    pests: "Aphids sometimes cluster on the flower stems; rinse them off in the shower or wipe them away with soapy water. Because spider plants throw out so many babies, an infestation on one plant can travel to every pot you have put a baby in, so treat them all at once."
+  },
+  {
+    id: "aloe", group: "house", name: "Aloe Vera",
+    latin: "Aloe vera", draw: "aloe",
+    look: { green: 0.6, dark: 0.35, colour: "#6aa15e" },
+    water: "Aloe is a desert plant and stores water in its thick leaves. Push your finger two centimetres in: if there is the slightest dampness, leave it. When the soil is bone dry, water it heavily and let it all run out. Water sitting in the saucer rots the base, and a rotted aloe goes soft and brown and cannot be saved.",
+    light: "It wants as much sun as you can give it — a south-facing windowsill is ideal. A plant kept too dark grows pale, stretched and floppy. It does not need a true dormancy, but keep it cooler and almost completely dry from November to February and it will be much happier.",
+    grow: "Grown-up aloes push out small copies of themselves around the base, called pups. Tip the plant out, separate a pup with a few roots of its own, let the cut dry for two days so it seals, then pot it in gritty compost. It will look like a small version of the parent straight away and reach full size in two or three years. A leaf cutting will not work — it just rots.",
+    clean: "Wipe the leaves with a dry or barely damp cloth; dust blocks light, and aloe is one of the few houseplants that really does need all the light it can get. Never cut a leaf halfway — take it off right at the base, because a cut leaf seals badly and stays open. Remove tatty outer leaves in spring, and do not cut anything in winter while it is resting.",
+    pests: "Watch for mealybugs tucked deep between the leaves where they meet; a cotton bud and soapy water deals with them. Aloes are often kept on a sunny sill next to other succulents, and mealybugs will walk from pot to pot, so check the whole row if you find one."
+  },
+
+  // ---------------------------------------------------- carnivorous plants
+  {
+    id: "flytrap", group: "carnivorous", name: "Venus Flytrap",
+    latin: "Dionaea muscipula", draw: "flytrap",
+    look: { green: 0.6, dark: 0.4, colour: "#5aa83f" },
+    water: "Touch the moss on top: if it is still moist, leave it alone. If it is starting to dry, top the tray up. A flytrap should stand in a saucer with a centimetre or two of water in the growing season, so the moss never dries out completely. It must be rainwater, distilled water or water from a dehumidifier — tap water carries minerals that build up in the moss and kill it within months. Never feed it meat from your dinner; an insect or nothing at all.",
+    light: "It wants full, direct sun — four hours a day at the very least, and more is better. Good light is what turns the insides of the traps deep red. It absolutely needs a winter dormancy: from about November to February it should sit somewhere cold, between roughly 2 and 10 degrees, with the water tray emptied and the moss only damp. It will look half dead and lose most of its traps. That is normal, and a plant denied its winter rest usually dies in its second year.",
+    grow: "The easiest way is to split the clump. Tip it out in early spring, tease apart a rosette that has its own white roots, and pot it into moss and perlite with no fertiliser at all. It looks like the parent straight away. Leaf pullings also work: pull a whole leaf downward so the white base comes away, lay it on damp moss in a sealed bag in the light, and tiny plants appear in about two months, though they take two to three years to reach full size.",
+    clean: "There is not much to dust — the traps are small and rain or a light misting rinses them. Cut off any black, dead trap at the base of its stalk with scissors; dead leaves left on damp moss grow mould that spreads to healthy growth. Trim through spring and summer whenever traps blacken, and stop once dormancy starts, leaving the dead growth until you tidy it in early spring.",
+    pests: "Aphids attack new growth and leave it twisted and stunted; the safest fix is to submerge the whole plant under rainwater for a day, which drowns them without chemicals. Never use ordinary bug spray on a carnivorous plant. Keep a new plant apart for a fortnight, because aphids move between pots and a shelf of carnivorous plants can be ruined by one infested arrival."
+  },
+  {
+    id: "sundew", group: "carnivorous", name: "Cape Sundew",
+    latin: "Drosera capensis", draw: "sundew",
+    look: { green: 0.5, dark: 0.35, colour: "#7cb342" },
+    water: "Feel the moss: if it is moist, leave it. A Cape sundew likes to sit in a tray with a centimetre of rainwater all year round and is far less fussy than a flytrap. Rainwater or distilled water only — tap water will kill it. If the sticky dew on the tentacles disappears, the air is too dry or the water is wrong, and those are the first things to check.",
+    light: "Bright light, including a few hours of direct sun, is what keeps the dew glistening and the leaves flushed red. In poor light it goes plain green and the dew dries up. It needs no winter dormancy at all, which is what makes it a much easier first carnivorous plant than a flytrap — just keep it on a windowsill all year.",
+    grow: "It is one of the easiest plants there is to copy. Cut a healthy leaf into pieces, lay them on damp moss, and keep them humid and bright. Little plants appear along the cuttings in four to six weeks. They look like small versions of the parent within a few months and are fully grown inside a year. It also scatters its own seed and will pop up in every neighbouring pot given the chance.",
+    clean: "Do not wipe the leaves — the dew is the whole point and rubbing it off costs the plant a meal. Snip dead black leaves off at the base so mould does not take hold on the wet moss. Tidy it any time during the year, since it never goes dormant, but cut less in the dim middle of winter when it is growing slowly.",
+    pests: "Aphids go for the curled new growth in the centre; drowning the plant under rainwater for a day clears them without chemicals. Sundews catch a lot of small flying pests themselves, which quietly protects the plants standing near them."
+  },
+  {
+    id: "sarracenia", group: "carnivorous", name: "Trumpet Pitcher",
+    latin: "Sarracenia", draw: "sarracenia",
+    look: { green: 0.55, dark: 0.35, colour: "#6aa34a" },
+    water: "Check the moss with a finger; if it is still moist, do nothing. Through spring and summer it should stand in a tray with two or three centimetres of rainwater — this is a bog plant and it is very hard to overwater in the growing season. Rainwater or distilled water only. Do not pour water down the pitchers themselves; they fill from rain naturally and tipping water in washes out what they have caught.",
+    light: "Full sun, all day, outdoors if you can. This is not a windowsill plant, and in weak light the pitchers come up short, floppy and green instead of tall and veined with red. It must have a proper winter dormancy: leave it outside through the cold, keep the moss damp but drop the water tray, and let it die back. It survives frost easily. Without that cold rest it weakens and dies within a couple of years.",
+    grow: "Split the rhizome — the thick horizontal root — in early spring before it wakes up. Cut a piece with at least one growing point and some roots and pot it in moss and sand. It looks like the parent in its first season. Seed works too but is slow: four to five years before it looks anything like the plant it came from.",
+    clean: "Rain washes the pitchers, so there is little dusting to do; if it lives indoors, rinse it under rainwater now and then. Cut brown pitchers off near the base once they have fully died, using scissors. Trim in autumn and early spring, and leave the dead pitchers standing over winter, because they shelter the crown from the worst of the cold.",
+    pests: "Aphids and, outdoors, slugs chewing holes in new pitchers are the usual trouble; pick slugs off by hand in the evening and drown aphids by submerging the pot. Never use a normal insecticide. Keep new plants apart for a couple of weeks so nothing arrives and spreads through a bog tray, where everything shares the same water."
+  },
+  {
+    id: "nepenthes", group: "carnivorous", name: "Monkey Cups",
+    latin: "Nepenthes", draw: "nepenthes",
+    look: { green: 0.5, dark: 0.4, colour: "#5f9e4a" },
+    water: "Feel the top of the compost: moist means leave it, drying means water it. Unlike a flytrap, a Nepenthes must not stand in a tray of water — its roots need air and they rot if they sit wet. Water it from the top with rainwater and let it drain. It likes humid air, so a bathroom or a regular misting suits it well.",
+    light: "Bright light but not harsh direct sun, which scorches the leaves and stops the pitchers forming. A plant in poor light grows leaves and no pitchers at all, which is the usual complaint. There is no winter dormancy — it is a tropical plant and must stay warm, above about 15 degrees, all year round. Cold is what kills most of them.",
+    grow: "Take a stem cutting with two or three leaves, cutting just below a node, and trim each leaf in half to cut down water loss. Stand it in damp moss inside a sealed bag somewhere warm and bright. It roots in one to three months and starts making pitchers of its own within a year, though it takes two or three years to look like a full-grown parent plant.",
+    clean: "Wipe the broad leaves with a damp cloth, as dust settles on them and blocks the light; be careful of the thin tendril holding each pitcher, because it snaps easily. Cut just above a node if you need to shorten a vine and it will branch from there. Prune in spring or summer while it is in growth, and avoid cutting in the coldest, darkest part of the year.",
+    pests: "Mealybugs hide under the leaves and in the joints where the pitchers attach; wipe them off with soapy water on a cotton bud. Because Nepenthes are often grown crowded together in a humid spot, mealybugs spread fast, so check the whole group if you find them on one."
+  },
+
+  // ---------------------------------------------------- outside plants
+  {
+    id: "sunflower", group: "outside", name: "Sunflower",
+    latin: "Helianthus annuus", draw: "sunflower",
+    look: { green: 0.4, dark: 0.25, colour: "#f0c419" },
+    water: "Push a finger a couple of centimetres into the soil at the base. Dry means water, and water deeply rather than often, so the roots follow the moisture down and the plant can hold itself up. Moist means leave it. A big sunflower in a pot in July can drink a whole watering can in a day, so check it every morning in hot weather.",
+    light: "Full sun, the more the better — the clue is in the name, and a shaded sunflower grows thin, leans badly and produces a small head. There is no winter dormancy to think about, because a sunflower is an annual: it grows, flowers, sets seed and dies, all in one year.",
+    grow: "You grow more from seed, which is the whole point of them. Leave a head on the plant until the back turns brown and the seeds loosen, then rub them out and keep them somewhere dry and cool. Sow in spring after the last frost. A seedling is flowering and as tall as the parent in about three months, which is faster than almost anything else you can grow.",
+    clean: "Outdoor plants are dusted by the rain, so there is nothing to wipe. Cut the main stem above a node if you want side branches rather than one giant head. Deadhead spent flowers through summer to keep more coming, and stop once autumn arrives if you want to keep the seed — and leave a head or two standing, because birds strip them through winter.",
+    pests: "Slugs and snails will eat a young seedling down to nothing overnight, so protect them early with a barrier or by picking them off after dark. Blackfly cluster on the stems and can be blasted off with a hose. Check seedlings daily in their first fortnight — that is when a whole row gets lost."
+  },
+  {
+    id: "lavender", group: "outside", name: "Lavender",
+    latin: "Lavandula", draw: "lavender",
+    look: { green: 0.42, dark: 0.35, colour: "#8e7cc3" },
+    water: "Lavender comes from dry, stony hillsides and hates wet feet. Put your finger two centimetres in: only water if it is dry right down, and then water well and leave it. An established plant in the ground needs almost no watering at all. Far more lavender is killed by soggy winter soil than by drought.",
+    light: "Full sun and free-draining soil. In shade it goes leggy, flowers poorly and rots at the base. It does not need a dormancy as such but it does slow right down in winter; the main thing is to keep it dry then, because cold plus wet is what finishes it off.",
+    grow: "Take cuttings in late summer: pull off a side shoot about eight centimetres long with a little heel of older wood, strip the lower leaves, and push it into gritty compost. Roots form in four to six weeks. It looks like a small version of the parent the following summer and is a proper bush in two to three years. Seed is slow and the offspring rarely match the parent.",
+    clean: "Rain keeps it clean outdoors. Cutting is the important bit: trim it every year after flowering, taking off the spent flower stems and about two or three centimetres of the green growth below them. Never cut back into the bare woody stems — lavender does not regrow from old wood and that cut stays a dead stump. Prune in late summer, and stop by early autumn so soft new growth is not caught by frost.",
+    pests: "Lavender is troubled by very little, which is part of its appeal, and its scent actually helps keep aphids and moths away from plants nearby. The one thing to watch for is froghopper 'cuckoo spit' on the stems in early summer, which is harmless and can be hosed off."
+  },
+  {
+    id: "oak", group: "outside", name: "English Oak",
+    latin: "Quercus robur", draw: "oak",
+    look: { green: 0.58, dark: 0.5, colour: "#3f7a35" },
+    water: "A young oak needs watering through its first two or three summers while its roots go down — a bucket a week in dry weather, poured slowly so it soaks in rather than running off. Test with a finger a few centimetres into the soil first; if it is moist down there, leave it. Once established, an oak finds its own water and should never need watering again.",
+    light: "Full sun. An oak grown in the shade of bigger trees stretches upward thin and weak. It has a true winter dormancy: it drops its leaves in autumn, stands bare through the cold, and comes back in late spring — it is one of the last trees to come into leaf, so a bare oak in April is not a dead one.",
+    grow: "Collect a fat, unblemished acorn in autumn and float the acorns in water — the ones that sink are good, the floaters are hollow. Plant it a few centimetres deep in a deep pot, because the first thing it grows is a long taproot. It sprouts the following spring. Be honest about the timescale: it is a metre tall in three or four years and takes decades to look like a full-grown parent tree, and it will not produce its own acorns for about forty years.",
+    clean: "Rain does the cleaning. For shaping, cut a branch back to just above a bud or a side branch rather than leaving a stub, which dies back and lets rot in. Prune an oak only in late summer — never in spring when the sap is rising, and never in winter, because pruning wounds made then are far more likely to become infected.",
+    pests: "Oaks feed hundreds of kinds of insect and a healthy tree copes with nearly all of them, so nibbled leaves are nothing to worry about. The one that matters is oak processionary moth, whose caterpillars build white silk nests on the trunk and have hairs that irritate skin badly — never touch a nest, and tell an adult so it can be reported."
+  },
+  {
+    id: "daffodil", group: "outside", name: "Daffodil",
+    latin: "Narcissus", draw: "daffodil",
+    look: { green: 0.45, dark: 0.3, colour: "#f5c518" },
+    water: "In the ground, rain is usually enough. In a pot, feel the compost two centimetres down while the plant is in leaf and growing: dry means water, moist means leave it. Once the leaves have yellowed off in early summer, stop watering altogether — the bulb is resting underground and wet soil in summer rots it.",
+    light: "Sun or light shade while it is growing and flowering. Under a deciduous tree works well, because daffodils do all their growing before the tree comes into leaf. It has a proper dormancy, but an unusual one: it rests in summer, not winter. The bulb sits dry underground from June, then roots in autumn and pushes up in late winter.",
+    grow: "You do not grow daffodils from cuttings — a bulb makes more bulbs beside itself. Lift a clump once the leaves have died back, pull the smaller bulbs off the side of the parent, and replant them straight away, twice their own depth. A good-sized offset flowers the very next spring; a small one takes two or three years to build up enough to flower.",
+    clean: "Rain keeps them clean. The one rule that matters more than any other: do not cut the leaves off after flowering, and do not tie them in knots. The plant spends those six weeks feeding next year's flower back down into the bulb, and cutting the leaves early is the usual reason daffodils come up blind the following spring. Snap off the dead flower head, then leave the leaves alone until they yellow and pull away easily in June.",
+    pests: "Narcissus bulb fly lays eggs at the neck of the bulb in late spring and the grub eats it hollow; firming the soil over the dying leaves makes it much harder for the fly to get in. Slugs chew the flowers. A bulb that comes up blind or soft is best dug out and thrown away, not replanted, so nothing spreads to the rest."
+  }
+];
+
+const GROUPS = {
+  outside:     { name: "Outside plants", blurb: "Trees and flowers that live outdoors." },
+  house:       { name: "House plants",   blurb: "Plants that live indoors with you." },
+  carnivorous: { name: "Carnivorous plants", blurb: "Plants that catch and eat insects." }
+};
+
+// ---------------------------------------------------------------------------
+// Pictures, drawn in code. Nothing is loaded from the internet, so the page
+// works on a phone, on a borrowed computer, and with no connection at all.
+// ---------------------------------------------------------------------------
+function pot(c, w) {
+  c.fillStyle = "#b5653f";
+  c.beginPath();
+  c.moveTo(-w, 0); c.lineTo(w, 0);
+  c.lineTo(w * 0.74, w * 0.95); c.lineTo(-w * 0.74, w * 0.95);
+  c.closePath(); c.fill();
+  c.fillStyle = "#9c5334";
+  c.fillRect(-w * 1.06, -w * 0.16, w * 2.12, w * 0.2);
+}
+
+function leafShape(c, len, wide, colour) {
+  c.fillStyle = colour;
+  c.beginPath();
+  c.moveTo(0, 0);
+  c.quadraticCurveTo(wide, -len * 0.45, 0, -len);
+  c.quadraticCurveTo(-wide, -len * 0.45, 0, 0);
+  c.fill();
+}
+
+const ART = {
+  monstera(c) {
+    pot(c, 34);
+    c.strokeStyle = "#3f7d3b"; c.lineWidth = 5; c.lineCap = "round";
+    const leaves = [[-0.7, 62], [-0.25, 78], [0.25, 76], [0.7, 58]];
+    for (const [a, len] of leaves) {
+      c.beginPath(); c.moveTo(0, -6);
+      c.lineTo(Math.sin(a) * len * 0.7, -len * 0.7); c.stroke();
+      c.save();
+      c.translate(Math.sin(a) * len * 0.7, -len * 0.7);
+      c.rotate(a * 0.8);
+      c.fillStyle = "#2f7d3b";
+      c.beginPath(); c.ellipse(0, -22, 26, 30, 0, 0, Math.PI * 2); c.fill();
+      // the famous holes
+      c.fillStyle = "#eef5ec";
+      for (let i = -1; i <= 1; i++) {
+        c.beginPath();
+        c.ellipse(i * 13, -22 + Math.abs(i) * 8, 5, 9, 0, 0, Math.PI * 2);
+        c.fill();
+      }
+      c.restore();
+    }
+  },
+  snake(c) {
+    pot(c, 30);
+    for (let i = -2; i <= 2; i++) {
+      c.save();
+      c.translate(i * 12, -4);
+      c.rotate(i * 0.13);
+      c.fillStyle = i % 2 ? "#3a6b3a" : "#477c42";
+      c.beginPath();
+      c.moveTo(-9, 0);
+      c.quadraticCurveTo(-11, -60, 0, -104 + Math.abs(i) * 14);
+      c.quadraticCurveTo(11, -60, 9, 0);
+      c.closePath(); c.fill();
+      c.fillStyle = "#c9c06a";
+      c.fillRect(-9, -20, 2.5, 16);
+      c.fillRect(6.5, -40, 2.5, 16);
+      c.restore();
+    }
+  },
+  spider(c) {
+    pot(c, 30);
+    for (let i = 0; i < 11; i++) {
+      const a = -1.35 + (i / 10) * 2.7;
+      c.save(); c.translate(0, -8); c.rotate(a);
+      c.fillStyle = i % 2 ? "#57a85c" : "#8fd18f";
+      c.beginPath();
+      c.moveTo(-4, 0);
+      c.quadraticCurveTo(-7, -52, 0, -86);
+      c.quadraticCurveTo(7, -52, 4, 0);
+      c.closePath(); c.fill();
+      c.restore();
+    }
+    // a baby on a long stem
+    c.strokeStyle = "#6fae57"; c.lineWidth = 3;
+    c.beginPath(); c.moveTo(10, -40);
+    c.quadraticCurveTo(70, -30, 74, 18); c.stroke();
+    for (let i = -2; i <= 2; i++) {
+      c.save(); c.translate(74, 18); c.rotate(i * 0.4);
+      c.fillStyle = "#7ec47e";
+      c.beginPath(); c.ellipse(0, 11, 3.5, 12, 0, 0, Math.PI * 2); c.fill();
+      c.restore();
+    }
+  },
+  aloe(c) {
+    pot(c, 32);
+    for (let i = -3; i <= 3; i++) {
+      c.save(); c.translate(0, -6); c.rotate(i * 0.3);
+      const len = 96 - Math.abs(i) * 13;
+      c.fillStyle = i % 2 ? "#6aa15e" : "#7db070";
+      c.beginPath();
+      c.moveTo(-13, 0);
+      c.quadraticCurveTo(-9, -len * 0.6, 0, -len);
+      c.quadraticCurveTo(9, -len * 0.6, 13, 0);
+      c.closePath(); c.fill();
+      c.strokeStyle = "#cfe3b8"; c.lineWidth = 2;
+      for (let t = 1; t <= 4; t++) {
+        const y = -len * (t / 5);
+        c.beginPath(); c.moveTo(-10 + t, y); c.lineTo(-13 + t, y - 5); c.stroke();
+      }
+      c.restore();
+    }
+  },
+  flytrap(c) {
+    pot(c, 32);
+    for (let i = -2; i <= 2; i++) {
+      c.save(); c.translate(i * 15, -6); c.rotate(i * 0.26);
+      c.strokeStyle = "#5aa83f"; c.lineWidth = 8; c.lineCap = "round";
+      c.beginPath(); c.moveTo(0, 0); c.lineTo(0, -42); c.stroke();
+      // the trap, two halves open
+      for (const s of [-1, 1]) {
+        c.save(); c.translate(0, -44); c.rotate(s * 0.42);
+        c.fillStyle = "#4f9c3a";
+        c.beginPath(); c.ellipse(s * 10, -13, 11, 20, 0, 0, Math.PI * 2); c.fill();
+        c.fillStyle = "#c0392b";
+        c.beginPath(); c.ellipse(s * 8, -13, 6, 15, 0, 0, Math.PI * 2); c.fill();
+        c.strokeStyle = "#4f9c3a"; c.lineWidth = 2.4;
+        for (let t = -1; t <= 1; t++) {
+          c.beginPath();
+          c.moveTo(s * 10 + t * 7, -31);
+          c.lineTo(s * 15 + t * 8, -41);
+          c.stroke();
+        }
+        c.restore();
+      }
+      c.restore();
+    }
+  },
+  sundew(c) {
+    pot(c, 30);
+    for (let i = 0; i < 9; i++) {
+      const a = -1.2 + (i / 8) * 2.4;
+      c.save(); c.translate(0, -8); c.rotate(a);
+      c.strokeStyle = "#7cb342"; c.lineWidth = 7; c.lineCap = "round";
+      c.beginPath();
+      c.moveTo(0, 0);
+      c.quadraticCurveTo(6, -46, 2, -84);
+      c.stroke();
+      // the sticky drops
+      for (let d = 0; d < 5; d++) {
+        const y = -22 - d * 15;
+        c.fillStyle = "#e8536f";
+        c.beginPath(); c.arc(-6, y, 3.6, 0, Math.PI * 2); c.fill();
+        c.beginPath(); c.arc(9, y - 6, 3.6, 0, Math.PI * 2); c.fill();
+      }
+      c.restore();
+    }
+  },
+  sarracenia(c) {
+    pot(c, 32);
+    for (let i = -2; i <= 2; i++) {
+      const h = 104 - Math.abs(i) * 18;
+      c.save(); c.translate(i * 17, -6); c.rotate(i * 0.1);
+      const g = c.createLinearGradient(-12, 0, 12, 0);
+      g.addColorStop(0, "#4f8b3e"); g.addColorStop(0.5, "#8bc46a"); g.addColorStop(1, "#4a7f38");
+      c.fillStyle = g;
+      c.beginPath();
+      c.moveTo(-9, 0);
+      c.quadraticCurveTo(-16, -h * 0.6, -12, -h);
+      c.lineTo(12, -h);
+      c.quadraticCurveTo(16, -h * 0.6, 9, 0);
+      c.closePath(); c.fill();
+      c.strokeStyle = "rgba(180,50,60,.45)"; c.lineWidth = 2;
+      for (let v = -1; v <= 1; v++) {
+        c.beginPath();
+        c.moveTo(v * 5, -h * 0.1);
+        c.quadraticCurveTo(v * 7, -h * 0.6, v * 6, -h * 0.95);
+        c.stroke();
+      }
+      c.fillStyle = "#c0392b";
+      c.beginPath(); c.ellipse(0, -h, 13, 4.5, 0, 0, Math.PI * 2); c.fill();
+      c.fillStyle = "#6fae4c";
+      c.save(); c.translate(0, -h - 2); c.rotate(-0.5);
+      c.beginPath(); c.ellipse(0, -8, 13, 8, 0, 0, Math.PI * 2); c.fill();
+      c.restore();
+      c.restore();
+    }
+  },
+  nepenthes(c) {
+    c.strokeStyle = "#5f9e4a"; c.lineWidth = 6; c.lineCap = "round";
+    c.beginPath(); c.moveTo(-70, -100); c.quadraticCurveTo(0, -84, 62, -104); c.stroke();
+    for (const [x, s] of [[-44, 1], [8, 1.2], [54, 0.9]]) {
+      c.save(); c.translate(x, -96); c.scale(s, s);
+      c.strokeStyle = "#6fae4c"; c.lineWidth = 3;
+      c.beginPath(); c.moveTo(0, 0); c.quadraticCurveTo(6, 18, 0, 30); c.stroke();
+      const g = c.createLinearGradient(-16, 0, 16, 0);
+      g.addColorStop(0, "#7a4a2e"); g.addColorStop(0.5, "#c96a3f"); g.addColorStop(1, "#6f4229");
+      c.fillStyle = g;
+      c.beginPath();
+      c.moveTo(-13, 32);
+      c.quadraticCurveTo(-20, 62, -11, 80);
+      c.quadraticCurveTo(0, 88, 11, 80);
+      c.quadraticCurveTo(20, 62, 13, 32);
+      c.closePath(); c.fill();
+      c.fillStyle = "#a8452e";
+      c.beginPath(); c.ellipse(0, 32, 13, 4.5, 0, 0, Math.PI * 2); c.fill();
+      c.fillStyle = "#7fbf55";
+      c.save(); c.rotate(-0.5);
+      c.beginPath(); c.ellipse(0, 22, 13, 7, 0, 0, Math.PI * 2); c.fill();
+      c.restore();
+      c.restore();
+    }
+    // a couple of leaves
+    c.fillStyle = "#5f9e4a";
+    for (const x of [-68, 64]) {
+      c.save(); c.translate(x, -100); c.rotate(x < 0 ? 0.5 : -0.5);
+      leafShape(c, 44, 18, "#5f9e4a");
+      c.restore();
+    }
+  },
+  sunflower(c) {
+    c.strokeStyle = "#4a8b35"; c.lineWidth = 9; c.lineCap = "round";
+    c.beginPath(); c.moveTo(0, 96); c.lineTo(0, -34); c.stroke();
+    for (const s of [-1, 1]) {
+      c.save(); c.translate(0, 24 + (s > 0 ? 26 : 0)); c.rotate(s * 1.1);
+      leafShape(c, 50, 26, "#4a8b35");
+      c.restore();
+    }
+    for (let i = 0; i < 18; i++) {
+      const a = (i / 18) * Math.PI * 2;
+      c.save(); c.translate(0, -56); c.rotate(a);
+      c.fillStyle = i % 2 ? "#f0c419" : "#ffd84d";
+      c.beginPath(); c.ellipse(0, -34, 9, 25, 0, 0, Math.PI * 2); c.fill();
+      c.restore();
+    }
+    c.fillStyle = "#6b4423";
+    c.beginPath(); c.arc(0, -56, 28, 0, Math.PI * 2); c.fill();
+    c.fillStyle = "#4e3119";
+    for (let i = 0; i < 30; i++) {
+      const a = i * 2.4, r = 3 + i * 0.85;
+      c.beginPath();
+      c.arc(Math.cos(a) * r, -56 + Math.sin(a) * r, 2.2, 0, Math.PI * 2);
+      c.fill();
+    }
+  },
+  lavender(c) {
+    for (let i = -3; i <= 3; i++) {
+      c.save(); c.translate(i * 15, 88); c.rotate(i * 0.12);
+      c.strokeStyle = "#7c9068"; c.lineWidth = 4; c.lineCap = "round";
+      c.beginPath(); c.moveTo(0, 0); c.lineTo(0, -100 + Math.abs(i) * 9); c.stroke();
+      const top = -100 + Math.abs(i) * 9;
+      for (let b = 0; b < 7; b++) {
+        c.fillStyle = b % 2 ? "#8e7cc3" : "#a58fd8";
+        c.beginPath();
+        c.ellipse((b % 2 ? 4 : -4), top + b * 9, 5.5, 6.5, 0, 0, Math.PI * 2);
+        c.fill();
+      }
+      c.restore();
+    }
+  },
+  oak(c) {
+    c.fillStyle = "#6b4f2a";
+    c.beginPath();
+    c.moveTo(-15, 100); c.lineTo(-8, -10); c.lineTo(8, -10); c.lineTo(15, 100);
+    c.closePath(); c.fill();
+    c.strokeStyle = "#6b4f2a"; c.lineWidth = 7; c.lineCap = "round";
+    for (const s of [-1, 1]) {
+      c.beginPath(); c.moveTo(0, -4); c.lineTo(s * 40, -44); c.stroke();
+      c.beginPath(); c.moveTo(0, -24); c.lineTo(s * 26, -64); c.stroke();
+    }
+    c.fillStyle = "#3f7a35";
+    for (const [x, y, r] of [[0, -76, 44], [-42, -50, 32], [42, -50, 32], [-22, -92, 28], [24, -92, 28]]) {
+      c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill();
+    }
+    c.fillStyle = "#4e9140";
+    for (const [x, y, r] of [[-14, -86, 20], [20, -70, 18], [-36, -58, 16]]) {
+      c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill();
+    }
+  },
+  daffodil(c) {
+    for (const s of [-1, 1]) {
+      c.save(); c.translate(s * 12, 100); c.rotate(s * 0.14);
+      c.fillStyle = "#4f9140";
+      c.beginPath();
+      c.moveTo(-6, 0); c.quadraticCurveTo(-10, -70, 0, -118);
+      c.quadraticCurveTo(10, -70, 6, 0); c.closePath(); c.fill();
+      c.restore();
+    }
+    c.strokeStyle = "#4f9140"; c.lineWidth = 7; c.lineCap = "round";
+    c.beginPath(); c.moveTo(0, 100); c.lineTo(0, -50); c.stroke();
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2;
+      c.save(); c.translate(0, -62); c.rotate(a);
+      c.fillStyle = "#ffe066";
+      c.beginPath(); c.ellipse(0, -24, 11, 19, 0, 0, Math.PI * 2); c.fill();
+      c.restore();
+    }
+    c.fillStyle = "#f5a623";
+    c.beginPath(); c.ellipse(0, -62, 15, 15, 0, 0, Math.PI * 2); c.fill();
+    c.fillStyle = "#e08e12";
+    c.beginPath(); c.ellipse(0, -62, 9, 9, 0, 0, Math.PI * 2); c.fill();
+  }
+};
+
+function paintPlant(canvas, id) {
+  const p = PLANTS.find(x => x.id === id);
+  const c = canvas.getContext("2d");
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const box = canvas.clientWidth || 160;
+  canvas.width = box * dpr;
+  canvas.height = box * dpr;
+  c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  c.clearRect(0, 0, box, box);
+  c.save();
+  c.translate(box / 2, box * 0.62);
+  const s = box / 260;
+  c.scale(s, s);
+  ART[p.draw](c);
+  c.restore();
+}
+
+// ---------------------------------------------------------------------------
+// Tabs
+// ---------------------------------------------------------------------------
+let tabMode = "main";        // "main" = two tabs, "browse" = four tabs
+let openGroup = null;
+
+const tabsEl = document.getElementById("tabs");
+const viewHome = document.getElementById("viewHome");
+const viewGrid = document.getElementById("viewGrid");
+const viewPage = document.getElementById("viewPage");
+
+function show(which) {
+  viewHome.hidden = which !== "home";
+  viewGrid.hidden = which !== "grid";
+  viewPage.hidden = which !== "page";
+  window.scrollTo(0, 0);
+}
+
+function drawTabs(active) {
+  tabsEl.innerHTML = "";
+  const add = (label, on, cls, fn) => {
+    const b = document.createElement("button");
+    b.className = "tab" + (on ? " on" : "") + (cls ? " " + cls : "");
+    b.textContent = label;
+    b.addEventListener("click", fn);
+    tabsEl.appendChild(b);
+  };
+
+  if (tabMode === "main") {
+    add("Identify a plant", active === "home", "", () => { show("home"); drawTabs("home"); });
+    add("Look through the plants", active === "browse", "", () => {
+      tabMode = "browse";
+      openGroup = null;
+      drawTabs("browse");
+      showAllPlants();
+    });
+  } else {
+    // the two tabs are replaced by four
+    add("Back", false, "back", () => {
+      tabMode = "main";
+      drawTabs("home");
+      show("home");
+    });
+    for (const key of ["outside", "house", "carnivorous"]) {
+      add(GROUPS[key].name, openGroup === key, "", () => {
+        openGroup = key;
+        drawTabs("browse");
+        showGroup(key);
+      });
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// The identify page
+// ---------------------------------------------------------------------------
+let picked = null;           // the image the user put in
+
+viewHome.innerHTML =
+  '<p class="note" id="homeNote"></p>' +
+  '<div class="identify" id="idRow">' +
+    '<div id="idResult" style="flex:1 1 440px; min-width:280px"></div>' +
+    '<div class="dropCol" id="dropCol">' +
+      '<div class="dropBox" id="dropBox">' +
+        '<p><b>Put a picture here</b><br>Paste it with Ctrl+V, drag one in, or click to choose a photo.</p>' +
+      '</div>' +
+      '<button class="goBtn" id="goBtn" disabled>Identify</button>' +
+      '<div class="shotCap">Your picture</div>' +
+    '</div>' +
+  '</div>' +
+  '<input type="file" id="filePick" accept="image/*" hidden>';
+
+document.getElementById("homeNote").innerHTML =
+  "<b>What this can and cannot do.</b> The pictures and all the care advice here are real. " +
+  "The identifying is not a trained model yet — it compares the colours in your photo " +
+  "against the plants in the library and offers you its closest guesses to choose from. " +
+  "A proper model that recognises a plant on its own is the next piece of work.";
+
+const dropBox = document.getElementById("dropBox");
+const goBtn = document.getElementById("goBtn");
+const idResult = document.getElementById("idResult");
+const filePick = document.getElementById("filePick");
+
+function useImage(src) {
+  picked = src;
+  dropBox.innerHTML = "";
+  const img = document.createElement("img");
+  img.src = src;
+  dropBox.appendChild(img);
+  goBtn.disabled = false;
+  idResult.innerHTML = "";
+  document.getElementById("idRow").classList.remove("done");
+  document.getElementById("dropCol").classList.remove("asShot");
+}
+
+dropBox.addEventListener("click", () => filePick.click());
+filePick.addEventListener("change", e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  const r = new FileReader();
+  r.onload = ev => useImage(ev.target.result);
+  r.readAsDataURL(f);
+});
+
+window.addEventListener("paste", e => {
+  for (const item of e.clipboardData.files) {
+    if (item.type.startsWith("image/")) {
+      const r = new FileReader();
+      r.onload = ev => useImage(ev.target.result);
+      r.readAsDataURL(item);
+      return;
+    }
+  }
+});
+
+["dragenter", "dragover"].forEach(ev =>
+  dropBox.addEventListener(ev, e => { e.preventDefault(); dropBox.classList.add("over"); }));
+["dragleave", "drop"].forEach(ev =>
+  dropBox.addEventListener(ev, e => { e.preventDefault(); dropBox.classList.remove("over"); }));
+dropBox.addEventListener("drop", e => {
+  const f = e.dataTransfer.files[0];
+  if (!f || !f.type.startsWith("image/")) return;
+  const r = new FileReader();
+  r.onload = ev => useImage(ev.target.result);
+  r.readAsDataURL(f);
+});
+
+// Reads the colours out of the picture. Honest about what it is: it can tell
+// green from yellow, and light from dark, and nothing more clever than that.
+function readColours(src) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      const n = 48;
+      const c = document.createElement("canvas");
+      c.width = n; c.height = n;
+      const g = c.getContext("2d");
+      g.drawImage(img, 0, 0, n, n);
+      const d = g.getImageData(0, 0, n, n).data;
+      let r = 0, gr = 0, b = 0, dark = 0;
+      for (let i = 0; i < d.length; i += 4) {
+        r += d[i]; gr += d[i + 1]; b += d[i + 2];
+        if ((d[i] + d[i + 1] + d[i + 2]) / 3 < 110) dark++;
+      }
+      const px = d.length / 4;
+      r /= px * 255; gr /= px * 255; b /= px * 255;
+      const total = r + gr + b || 1;
+      resolve({ green: gr / total, dark: dark / px });
+    };
+    img.onerror = () => resolve({ green: 0.33, dark: 0.3 });
+    img.src = src;
+  });
+}
+
+goBtn.addEventListener("click", async () => {
+  if (!picked) return;
+  const row = document.getElementById("idRow");
+  row.classList.add("done");
+  document.getElementById("dropCol").classList.add("asShot");
+
+  // the picture moves over to the right, still big
+  idResult.innerHTML = '<div class="thinking"><div class="spinner"></div>' +
+    '<p style="margin:0;color:#5c6f5c">Looking at your picture…</p></div>';
+
+  const found = await readColours(picked);
+  await new Promise(r => setTimeout(r, 1100));   // let the circle actually show
+
+  const scored = PLANTS.map(p => ({
+    p: p,
+    score: Math.abs(p.look.green - found.green) * 2.2 + Math.abs(p.look.dark - found.dark)
+  })).sort((a, b) => a.score - b.score).slice(0, 3);
+
+  idResult.innerHTML =
+    '<h2 class="section">Closest matches</h2>' +
+    '<p style="margin:0 0 14px;color:#5c6f5c;font-size:15px">' +
+    'Pick the one that looks like your plant and I will tell you how to look after it.</p>' +
+    '<div class="guesses" id="guesses"></div>';
+
+  const wrap = document.getElementById("guesses");
+  scored.forEach(s => {
+    const b = document.createElement("button");
+    b.className = "guess";
+    b.innerHTML = '<canvas width="76" height="76"></canvas>' +
+      '<span><span class="gName">' + s.p.name + '</span><br>' +
+      '<span class="gSub">' + s.p.latin + " · " + GROUPS[s.p.group].name + '</span></span>';
+    b.addEventListener("click", () => openPlant(s.p.id, picked));
+    wrap.appendChild(b);
+    paintPlant(b.querySelector("canvas"), s.p.id);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The walls of pictures
+// ---------------------------------------------------------------------------
+function cardsFor(list, title, blurb) {
+  viewGrid.innerHTML =
+    '<h2 class="section">' + title + '</h2>' +
+    (blurb ? '<p class="note">' + blurb + '</p>' : '') +
+    '<div class="grid" id="grid"></div>';
+  const grid = document.getElementById("grid");
+  for (const p of list) {
+    const b = document.createElement("button");
+    b.className = "card";
+    b.innerHTML = '<canvas></canvas><div class="cName">' + p.name +
+      '</div><div class="cLatin">' + p.latin + '</div>';
+    b.addEventListener("click", () => openPlant(p.id, null));
+    grid.appendChild(b);
+    paintPlant(b.querySelector("canvas"), p.id);
+  }
+  show("grid");
+}
+
+function showAllPlants() {
+  cardsFor(PLANTS, "All the plants",
+    "Click any plant to read how to look after it, or pick one of the three kinds above.");
+}
+
+function showGroup(key) {
+  cardsFor(PLANTS.filter(p => p.group === key), GROUPS[key].name, GROUPS[key].blurb);
+}
+
+// ---------------------------------------------------------------------------
+// One plant's write-up
+// ---------------------------------------------------------------------------
+function openPlant(id, photo) {
+  const p = PLANTS.find(x => x.id === id);
+  viewPage.innerHTML =
+    '<button class="backBtn" id="pageBack">← Back</button>' +
+    '<div class="identify done">' +
+      '<div class="page">' +
+        '<h2>' + p.name + '</h2>' +
+        '<p class="latin">' + p.latin + '</p>' +
+        '<h3>Watering</h3><p>' + p.water + '</p>' +
+        '<h3>Light and winter</h3><p>' + p.light + '</p>' +
+        '<h3>Making more of it</h3><p>' + p.grow + '</p>' +
+        '<h3>Dusting and cutting</h3><p>' + p.clean + '</p>' +
+        '<div class="pests"><b>Pests.</b> ' + p.pests + '</div>' +
+      '</div>' +
+      '<div class="shot">' +
+        (photo
+          ? '<img src="' + photo + '" alt=""><div class="cap">Your picture</div>'
+          : '<canvas id="pageArt" width="340" height="340"></canvas>' +
+            '<div class="cap">' + p.name + '</div>') +
+      '</div>' +
+    '</div>';
+
+  document.getElementById("pageBack").addEventListener("click", () => {
+    if (tabMode === "browse") {
+      openGroup ? showGroup(openGroup) : showAllPlants();
+    } else {
+      show("home");
+    }
+  });
+
+  const art = document.getElementById("pageArt");
+  if (art) paintPlant(art, p.id);
+  show("page");
+}
+
+// ---------------------------------------------------------------------------
+drawTabs("home");
+show("home");
+</script>
