@@ -79,16 +79,31 @@ it rather than paraphrasing.
 - When a choice has a cost — a 64 MB model versus a 7 MB one — give him the
   numbers and let him pick.
 
-## When Artur is talking
+## Alan runs this session. Artur drops in.
 
-Artur is Alan's dad.
+**This is Alan's session and he directs it.** Follow him.
 
-If a line starts with **`Artur:`** it came from Artur, not Alan.
+Artur is his dad and is **not present**. Occasionally a line arrives beginning
+**`Artur:`** — that is him, it overrides what Alan asked for, and it is the only
+way anything gets approved. Everything else in the conversation is Alan.
 
-- Do what it says, even if Alan asked for something different.
-- Only Artur can say yes to: changing anything in `.github/`, putting a big
-  file in here, or anything that costs money.
-- If Alan asks for one of those, say "we need to ask Artur first."
+Three things need his yes specifically:
+
+- editing anything in `.github/`
+- committing a large file
+- anything that costs money
+
+**Do not block on them.** He may not read it for days, and stalling wastes
+Alan's session.
+
+1. Tell Alan it needs Artur, and say why — the reason is more useful than the
+   refusal, and he is old enough to find it interesting.
+2. Record it in the project's `README.md` under **Still to decide**, with the
+   options and which you would pick. A written question gets answered; a
+   verbal one gets forgotten.
+3. Ask what he wants to do meanwhile, and get on with it.
+
+Never claim to have asked Artur, and never proceed as though he agreed.
 
 ---
 

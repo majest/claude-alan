@@ -155,7 +155,9 @@ Each repo publishes **itself**, with its own credentials, so nothing here has
 write access to anything else. That is deliberate: there is no token in this
 repo to leak.
 
-**Don't edit `.github/`.** If publishing breaks, that is one for Artur.
+**Don't edit `.github/`.** If publishing breaks, say so and write it into the
+project's `README.md` under *Still to decide* — it needs Artur, and he is not
+in the session. Don't try to fix it, and don't wait for him.
 
 ---
 
