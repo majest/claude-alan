@@ -186,6 +186,56 @@ that has to read well. It works differently:
   not in this repo. If those notes are not available, neither is the machine —
   say so rather than inventing a substitute.
 
+
+### Asking for pictures, sounds or music to be made
+
+A project can **ask** for assets to be generated on the machine at home. The
+request lives in the repo; the machine reads it later. Nothing is generated
+while someone plays, and the page must work before anything arrives.
+
+Put the request in `projects/<name>/ai/request.json`:
+
+```json
+{
+  "kind": "images",
+  "into": "art",
+  "defaults": { "size": 512, "steps": 2 },
+  "items": [
+    { "id": "slime-01", "group": "slime",
+      "prompt": "a friendly round green slime creature, flat bold colours, simple cartoon, plain dark background" },
+    { "id": "mech-01", "group": "mech",
+      "prompt": "a small friendly robot alien, flat bold colours, simple cartoon, plain dark background" }
+  ]
+}
+```
+
+- `kind` — what sort of asset. `images` works today; more can be added.
+- `into` — the folder inside the project where files land.
+- `id` — lowercase letters, digits, `-` and `_`. Becomes the filename.
+- `group` — optional, for sorting into families.
+- `prompt` — say what it looks like, plainly. Say the background and the style,
+  or you get whatever the model fancies.
+
+**Then write the page as if the files are not there**, because at first they
+are not. When the machine has run, it writes `index.json` next to them listing
+what actually exists:
+
+```json
+{ "kind": "images",
+  "items": [ { "id": "slime-01", "file": "slime-01.png" } ],
+  "groups": { "slime": ["slime-01.png"] } }
+```
+
+So the page loads `index.json`, uses whatever is listed, and draws its own
+fallback for the rest. A half-finished set still works. **A project that breaks
+when the pictures are missing is wrong** — the pictures are a bonus, not a
+dependency.
+
+The request can be written from anywhere. Running it needs Artur's own
+computer, since the machine is on the home network. Tell the child their
+request is saved and will be made next time it runs, rather than implying it
+is happening now.
+
 ---
 
 ## Multiplayer
