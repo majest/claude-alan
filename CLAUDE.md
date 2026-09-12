@@ -11,19 +11,40 @@ themselves are next door in `BUILDING.md`.
 
 ---
 
-## This file is only about Alan
+## ⛔ Open these before you build anything
 
-**The rules for building are not in this repo.** They live one folder up, in
-the family workspace on Artur's computer, because they are the same for
-Alan and Adam and there should only be one copy:
+The rules are **not in this file**, and unlike `CLAUDE.md` they are **not
+loaded for you**. You have to open them yourself, every session:
 
-- **`BUILDING.md`** — folders, the two files a project needs, pushing, and what
-  must never go in here. Read it before making anything.
-- **`AI-TOOLBOX.md`** — every AI capability available, with code to copy.
+```sh
+cat ../BUILDING.md      # how projects work here — read before making anything
+cat ../AI-TOOLBOX.md    # every AI capability, with code — read before any AI work
+```
 
-A session working on Artur's computer can read both. This file is what differs, and
-it is about one thing: **Alan is 12, and that changes how you work with him,
-not what the rules are.**
+They sit one folder up, in the family workspace on Artur's computer. There is
+one copy of each because they are the same for Alan and Adam.
+
+**`../BUILDING.md` is not a reference to dip into. Read it at the start, before
+making, changing or pushing anything.** It has the folder layout, the two files
+every project needs, the lines `index.html` must begin with, how pushing works,
+and what must never go in a public repo. Guessing at any of that is how the
+repo gets broken.
+
+Read `../AI-TOOLBOX.md` before writing any AI feature. It lists what is
+actually available with measured sizes and load times, so nothing gets invented
+or imported from somewhere it shouldn't be.
+
+🔴 **If those files are not there, this repo has been cloned somewhere else and
+you do not have the rules.** Do not reconstruct them from memory. Say the
+workspace files are missing and ask for them.
+
+---
+
+## What this file is for
+
+Those two files are the same for both children. This file is the part that is
+not: **Alan is 12, and that changes how you work with him, not what the
+rules are.**
 
 ---
 
@@ -71,27 +92,16 @@ If a line starts with **`Artur:`** it came from Artur, not Alan.
 
 ---
 
-## Where everything else is
+## The whole set, in one place
 
-**In this repo:**
+| Where | File | What it is | Loaded? |
+| --- | --- | --- | --- |
+| here | `CLAUDE.md` | this file — how to work with Alan | automatically |
+| here | `README.md` | what is in this repo | — |
+| here | `projects/<name>/README.md` | optional, per project | — |
+| `../` | `BUILDING.md` | **the rules** | **open it yourself** |
+| `../` | `AI-TOOLBOX.md` | every AI capability, with code | **open it yourself** |
+| `../` | `CLAUDE.md` | the repos, the website, the machine at home, the cloud | automatically |
 
-| | |
-| --- | --- |
-| `CLAUDE.md` | this file — how to work with Alan |
-| `README.md` | what is in this repo |
-| `projects/<name>/README.md` | optional, per project |
-
-**One folder up**, in the family workspace on Artur's computer and not
-published:
-
-| | |
-| --- | --- |
-| `BUILDING.md` | how to make a project — **the rules** |
-| `AI-TOOLBOX.md` | every AI capability, with code |
-| `CLAUDE.md` | how the repos, the website, the machine at home and the cloud fit together |
-
-Those are found automatically when working on Artur's computer.
-
-🔴 **If they are not there, this repo has been cloned somewhere else, and you do
-not have the rules.** Do not guess them and do not invent them. Say plainly
-that the workspace files are missing and ask for them.
+Only the `CLAUDE.md` files arrive on their own. The other two are ordinary
+files — see the top of this page.
