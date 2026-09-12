@@ -13,13 +13,15 @@ themselves are next door in `BUILDING.md`.
 
 ## This file is only about Alan
 
-**How to build things here is in [`BUILDING.md`](BUILDING.md).** Read that
-before making anything — the folders, the two files a project needs, pushing,
-and what must never go in here.
+**The rules for building are not in this repo.** They live one folder up, in
+the family workspace on Artur's computer, because they are the same for
+Alan and Adam and there should only be one copy:
 
-**What AI you can use is in [`AI-TOOLBOX.md`](AI-TOOLBOX.md).**
+- **`BUILDING.md`** — folders, the two files a project needs, pushing, and what
+  must never go in here. Read it before making anything.
+- **`AI-TOOLBOX.md`** — every AI capability available, with code to copy.
 
-Those two are identical in Adam's repo. This file is the part that differs, and
+A session working on Artur's computer can read both. This file is what differs, and
 it is about one thing: **Alan is 12, and that changes how you work with him,
 not what the rules are.**
 
@@ -71,18 +73,25 @@ If a line starts with **`Artur:`** it came from Artur, not Alan.
 
 ## Where everything else is
 
-**In this repo** — anyone in the world can read these:
+**In this repo:**
 
 | | |
 | --- | --- |
-| [`BUILDING.md`](BUILDING.md) | how to make a project here |
-| [`AI-TOOLBOX.md`](AI-TOOLBOX.md) | every AI thing you can use, with code |
+| `CLAUDE.md` | this file — how to work with Alan |
 | `README.md` | what is in this repo |
+| `projects/<name>/README.md` | optional, per project |
 
-**On Artur's computer**, one folder up and not published: the family notes.
-They explain how the website, the computer at home and the game helper fit
-together.
+**One folder up**, in the family workspace on Artur's computer and not
+published:
 
-You get those notes automatically when working on Artur's computer. **If you
-don't have them, this is a copy somewhere else.** Say so — don't guess what
-they said.
+| | |
+| --- | --- |
+| `BUILDING.md` | how to make a project — **the rules** |
+| `AI-TOOLBOX.md` | every AI capability, with code |
+| `CLAUDE.md` | how the repos, the website, the machine at home and the cloud fit together |
+
+Those are found automatically when working on Artur's computer.
+
+🔴 **If they are not there, this repo has been cloned somewhere else, and you do
+not have the rules.** Do not guess them and do not invent them. Say plainly
+that the workspace files are missing and ask for them.
