@@ -71,6 +71,7 @@ const villageUntil = new Map();        // player id -> ticks spent in a dead vil
 const foggy = new Set();               // players currently being fogged
 const biteCooldown = new Map();
 const grabbed = new Map();
+const scareAgain = new Map();          // player id -> tick before which no jumpscares
 let tongueCooldown = 0;
 let tick = 0;
 
@@ -167,6 +168,43 @@ function spawnWatcher(p, mode) {
   if (mode !== "watch") sound(p, "ambient.cave", 0.7, 0.4);
 }
 
+/*
+  The jumpscare.
+
+  One is put down three and a half blocks directly in front of your face,
+  already turned towards you, with a roar and a shake of the camera. It does
+  nothing to you and it is gone again in about a second. That is the whole of
+  it: no damage, no chase, just a very tall thing standing much too close.
+
+  There is a cooldown of two minutes per player, because a jumpscare you can
+  predict is not one.
+*/
+function jumpscare(p) {
+  let eye, v;
+  try { eye = p.getHeadLocation(); v = p.getViewDirection(); } catch { return; }
+  const away = 3.4;
+  const x = eye.x + v.x * away, z = eye.z + v.z * away;
+  const y = groundY(p.dimension, Math.floor(x), Math.floor(z), Math.floor(eye.y) + 4);
+  // no good if it would be standing in a hole or on the roof
+  if (y === undefined || Math.abs(y - p.location.y) > 4) return;
+
+  let e;
+  try { e = p.dimension.spawnEntity(WATCHER, { x: x, y: y, z: z }); } catch { return; }
+  try { e.triggerEvent("watchers:start_watching"); } catch {}
+  try {
+    // turn it to face you. Minecraft measures yaw from south, anticlockwise,
+    // which is what the minus and the order of the arguments are doing.
+    const dx = p.location.x - x, dz = p.location.z - z;
+    e.setRotation({ x: 0, y: Math.atan2(-dx, dz) * 180 / Math.PI });
+  } catch {}
+
+  mind.set(e.id, { mode: "scare", born: tick, seen: tick, everSeen: true });
+  sound(p, "mob.warden.roar", 1.0, 1.9);
+  try { p.runCommand("camerashake add @s 0.8 0.7 rotational"); } catch {}
+  try { p.onScreenDisplay.setActionBar("§4§l!"); } catch {}
+  scareAgain.set(p.id, tick + 20 * 120);
+}
+
 function goHunting(e, p) {
   const m = mind.get(e.id);
   if (!m || m.mode === "hunt") return;
@@ -198,6 +236,12 @@ function mindWatchers() {
   for (const e of watchers()) {
     let m = mind.get(e.id);
     if (!m) { m = { mode: "watch", born: tick, seen: 0, everSeen: false }; mind.set(e.id, m); }
+
+    // a jumpscare stands there for about a second and then is not there
+    if (m.mode === "scare") {
+      if (tick - m.born > 22) vanish(e);
+      continue;
+    }
 
     // dawn. Whatever it was doing, it is not doing it in daylight.
     if (!isNight()) { vanish(e); continue; }
@@ -579,6 +623,12 @@ system.runInterval(() => {
         villageUntil.set(key, 0);
         spawnWatcher(p, how);
         if (Math.random() < 0.5) spawnWatcher(p, how);
+      }
+
+      // now and then, one is simply there in your face for a second
+      if (night && tick > (scareAgain.get(p.id) ?? 0)
+          && Math.random() < (spruce ? 0.011 : 0.004)) {
+        jumpscare(p);
       }
 
       // and otherwise, now and then through the night, one comes to watch

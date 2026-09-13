@@ -299,7 +299,7 @@ write("tree/giant.mcfunction", giant_spruce())
 # Sizes are the model's own, in sixteenths of a block, so the two editions
 # agree about what it looks like.
 # --------------------------------------------------------------------------
-SLOTS = 3
+SLOTS = 4
 U = 1.0 / 16.0                      # one model unit, in blocks
 
 def quat_x(deg):

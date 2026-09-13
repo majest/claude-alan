@@ -8,6 +8,7 @@ execute as @a[tag=wt_grabbed] at @s run function watchers:creature/pull
 execute unless entity @e[tag=wt_creature,tag=wt_p1] if entity @e[tag=wt_body,tag=wt_p1] run kill @e[tag=wt_p1,tag=!wt_creature]
 execute unless entity @e[tag=wt_creature,tag=wt_p2] if entity @e[tag=wt_body,tag=wt_p2] run kill @e[tag=wt_p2,tag=!wt_creature]
 execute unless entity @e[tag=wt_creature,tag=wt_p3] if entity @e[tag=wt_body,tag=wt_p3] run kill @e[tag=wt_p3,tag=!wt_creature]
+execute unless entity @e[tag=wt_creature,tag=wt_p4] if entity @e[tag=wt_body,tag=wt_p4] run kill @e[tag=wt_p4,tag=!wt_creature]
 
 # things that do not need checking twenty times a second
 scoreboard players add #n wt_n 1

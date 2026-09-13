@@ -29,6 +29,11 @@ taken away, and another will be standing somewhere else in a minute.
 | 5 | The music stops. |
 | 6 | More of them, every night, for good. |
 
+Now and then one skips the watching and is simply standing three blocks in front
+of your face for a second, with a roar and the camera shaking. It does no damage.
+There is a two minute cooldown on those per player, because a jumpscare you can
+predict is not one.
+
 The old spruce forests have fog, cobwebs in the canopy, and several times the
 usual number of Watchers; stand still in one for a minute and one will find you.
 Most villages are empty by the time you reach them. And somewhere within a

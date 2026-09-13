@@ -6,4 +6,6 @@ execute if entity @s[tag=wt_p2] run kill @e[tag=wt_body,tag=wt_p2]
 execute if entity @s[tag=wt_p2] run kill @e[tag=wt_aim,tag=wt_p2]
 execute if entity @s[tag=wt_p3] run kill @e[tag=wt_body,tag=wt_p3]
 execute if entity @s[tag=wt_p3] run kill @e[tag=wt_aim,tag=wt_p3]
+execute if entity @s[tag=wt_p4] run kill @e[tag=wt_body,tag=wt_p4]
+execute if entity @s[tag=wt_p4] run kill @e[tag=wt_aim,tag=wt_p4]
 kill @s
