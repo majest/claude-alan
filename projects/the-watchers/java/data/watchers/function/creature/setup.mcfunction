@@ -14,8 +14,8 @@ attribute @s minecraft:movement_speed base set 0.3
 attribute @s minecraft:generic.movement_speed base set 0.3
 attribute @s minecraft:attack_damage base set 8
 attribute @s minecraft:generic.attack_damage base set 8
-attribute @s minecraft:follow_range base set 96
-attribute @s minecraft:generic.follow_range base set 96
+attribute @s minecraft:follow_range base set 128
+attribute @s minecraft:generic.follow_range base set 128
 attribute @s minecraft:knockback_resistance base set 1
 attribute @s minecraft:generic.knockback_resistance base set 1
 attribute @s minecraft:step_height base set 2
@@ -30,6 +30,9 @@ scoreboard players set @s wt_seen 0
 execute if score #mode wt_n matches ..0 run tag @s add wt_watching
 execute if score #mode wt_n matches ..0 run attribute @s minecraft:movement_speed base set 0
 execute if score #mode wt_n matches ..0 run attribute @s minecraft:generic.movement_speed base set 0
+
+# turned towards whoever it came for, from the moment it arrives
+execute at @s run tp @s ~ ~ ~ facing entity @p
 
 function watchers:creature/parts
 execute if score #mode wt_n matches 1.. as @a at @s run playsound minecraft:ambient.cave hostile @s ~ ~ ~ 0.7 0.4

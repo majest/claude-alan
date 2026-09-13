@@ -8,7 +8,11 @@ execute store result score #here wt_n if entity @e[tag=wt_creature]
 
 # They only ever turn up after dark, and never in daylight. More of them in
 # the old spruce forests, and more again from day 6.
-execute if score #time wt_day matches 13000..22800 as @a at @s if score #here wt_n matches ..2 run function watchers:creature/maybe
+# Almost always exactly one of them. One thing watching you is frightening;
+# a crowd is a fight rather than a fright. Day 6 allows a second.
+scoreboard players set #cap wt_n 0
+execute if score #day wt_day matches 6.. run scoreboard players set #cap wt_n 1
+execute if score #time wt_day matches 13000..22800 as @a at @s if score #here wt_n <= #cap wt_n run function watchers:creature/maybe
 
 # now and then, one is simply there in your face for a second
 scoreboard players add @a wt_cool 0

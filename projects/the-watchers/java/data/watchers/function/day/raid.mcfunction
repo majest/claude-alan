@@ -5,5 +5,4 @@ tellraw @a [{"text":"Day 3. ","color":"dark_red","bold":true},{"text":"They are 
 scoreboard players set #mode wt_n 1
 execute as @a at @s run function watchers:place/pick
 execute as @a at @s run function watchers:place/pick
-execute as @a at @s run function watchers:place/pick
 execute as @a at @s run playsound minecraft:entity.warden.roar hostile @s ~ ~ ~ 1 0.6

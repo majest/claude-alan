@@ -32,7 +32,17 @@ const TURNED = "watchers:turned";
 const NIGHT_FROM = 13000;
 const NIGHT_TO = 22800;
 
-const MOST_AT_ONCE = 5;
+/*
+  How many are allowed to be standing about at once.
+
+  Almost always one. One thing watching you is frightening; five is a crowd,
+  and a crowd is a fight rather than a fright. Day 6 allows a second, and
+  day 3's raid and the jumpscares deliberately ignore this — they are events,
+  not weather.
+*/
+function capNow() {
+  return day() >= 6 ? 2 : 1;
+}
 const FOG_TAG = "watchersfog";
 
 const PASSIVE = [
@@ -152,18 +162,30 @@ function inView(p, e, tightness) {
 // ---------------------------------------------------------------------------
 // the Watchers
 // ---------------------------------------------------------------------------
+function faceThePlayer(e, p, x, z) {
+  try {
+    // Minecraft measures yaw from south and anticlockwise, which is what the
+    // minus sign and the order of the arguments are doing.
+    const dx = p.location.x - x, dz = p.location.z - z;
+    e.setRotation({ x: 0, y: Math.atan2(-dx, dz) * 180 / Math.PI });
+  } catch {}
+}
+
 function spawnWatcher(p, mode) {
+  // close. Near enough that it is plainly there and plainly looking at you,
+  // not a shape on the horizon you have to squint at.
   const angle = Math.random() * Math.PI * 2;
-  const away = 13 + Math.random() * 14;
-  const x = Math.floor(p.location.x + Math.cos(angle) * away);
-  const z = Math.floor(p.location.z + Math.sin(angle) * away);
-  const y = groundY(p.dimension, x, z, Math.floor(p.location.y) + 20);
+  const away = 8 + Math.random() * 7;
+  const x = Math.floor(p.location.x + Math.cos(angle) * away) + 0.5;
+  const z = Math.floor(p.location.z + Math.sin(angle) * away) + 0.5;
+  const y = groundY(p.dimension, Math.floor(x), Math.floor(z), Math.floor(p.location.y) + 16);
   if (y === undefined) return;
   let e;
-  try { e = p.dimension.spawnEntity(WATCHER, { x: x + 0.5, y, z: z + 0.5 }); }
+  try { e = p.dimension.spawnEntity(WATCHER, { x: x, y: y, z: z }); }
   catch { return; }
   try { e.triggerEvent(mode === "watch" ? "watchers:start_watching" : "watchers:start_hunting"); }
   catch {}
+  faceThePlayer(e, p, x, z);
   mind.set(e.id, { mode: mode, born: tick, seen: 0, everSeen: false });
   if (mode !== "watch") sound(p, "ambient.cave", 0.7, 0.4);
 }
@@ -191,12 +213,7 @@ function jumpscare(p) {
   let e;
   try { e = p.dimension.spawnEntity(WATCHER, { x: x, y: y, z: z }); } catch { return; }
   try { e.triggerEvent("watchers:start_watching"); } catch {}
-  try {
-    // turn it to face you. Minecraft measures yaw from south, anticlockwise,
-    // which is what the minus and the order of the arguments are doing.
-    const dx = p.location.x - x, dz = p.location.z - z;
-    e.setRotation({ x: 0, y: Math.atan2(-dx, dz) * 180 / Math.PI });
-  } catch {}
+  faceThePlayer(e, p, x, z);
 
   mind.set(e.id, { mode: "scare", born: tick, seen: tick, everSeen: true });
   sound(p, "mob.warden.roar", 1.0, 1.9);
@@ -337,7 +354,7 @@ function theRaid() {
   setProp("wt_raid", true);
   say("§4§lDay 3. §r§7§oThey are not watching any more.");
   for (const p of players()) {
-    for (let i = 0; i < 3; i++) spawnWatcher(p, "hunt");
+    for (let i = 0; i < 2; i++) spawnWatcher(p, "hunt");
     sound(p, "mob.warden.roar", 1.0, 0.6);
   }
 }
@@ -618,11 +635,10 @@ system.runInterval(() => {
       const dwelt = Math.max(spruceUntil.get(key), villageUntil.get(key));
       const how = d >= 3 ? "hunt" : "watch";
 
-      if (night && dwelt >= 60 && here < MOST_AT_ONCE) {
+      if (night && dwelt >= 60 && here < capNow()) {
         spruceUntil.set(key, 0);
         villageUntil.set(key, 0);
         spawnWatcher(p, how);
-        if (Math.random() < 0.5) spawnWatcher(p, how);
       }
 
       // now and then, one is simply there in your face for a second
@@ -633,7 +649,7 @@ system.runInterval(() => {
 
       // and otherwise, now and then through the night, one comes to watch
       const chance = (spruce ? 0.14 : 0.03) * (d >= 6 ? 2.2 : 1);
-      if (night && here < MOST_AT_ONCE && Math.random() < chance) {
+      if (night && here < capNow() && Math.random() < chance) {
         spawnWatcher(p, how);
       }
 

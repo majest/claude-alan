@@ -17,6 +17,10 @@ For two days nothing chases you. After dark something simply turns up beside you
 and stands there. Three times your height, thin, black, with arms that bend the wrong way
 and no face at all except one round white mouth.
 
+There is almost never more than one at a time. They arrive close, eight to
+fifteen blocks away, already turned towards you, and they know where you are
+whether they can see you or not.
+
 It does not move while you are looking at it. Look straight at it and it knows,
 and it comes. Run, turn round, and it is not there — it was not hiding, it was
 taken away, and another will be standing somewhere else in a minute.
