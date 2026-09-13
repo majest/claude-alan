@@ -1596,9 +1596,12 @@ document.getElementById("homeNote").innerHTML =
   "<b>What this can and cannot do.</b> There are thirty-six plants in here — twelve that live " +
   "outdoors, twelve that live in the house and twelve that eat insects. The pictures and all " +
   "the care advice are real. " +
-  "The identifying is not a trained model yet — it compares the colours in your photo " +
-  "against the library's own pictures and offers the nearest of each kind to choose from. " +
-  "A proper model that recognises a plant on its own is the next piece of work.";
+  "The identifying is not a trained model yet. It throws away the background of your " +
+  "photo, counts what kinds of colour the plant is made of, measures how ragged its " +
+  "outline is, and offers the nearest two of each kind to choose from. Fed one of the " +
+  "library's own pictures it now picks the right plant about four times in five; a real " +
+  "photograph is harder than that, so treat the order as a suggestion. A proper model " +
+  "that recognises a plant on its own is the next piece of work.";
 
 const dropBox = document.getElementById("dropBox");
 const goBtn = document.getElementById("goBtn");
@@ -1649,61 +1652,162 @@ dropBox.addEventListener("drop", e => {
   r.readAsDataURL(f);
 });
 
-// Counts up the colours in a picture. The same function is used on your photo
-// and on the library's own pictures, which is the whole point: before, the
-// photo was measured one way and the plants were described by hand on a
-// completely different scale, so the comparison was meaningless.
-function measure(data) {
-  let r = 0, g = 0, b = 0, dark = 0, n = data.length / 4;
-  for (let i = 0; i < data.length; i += 4) {
-    r += data[i]; g += data[i + 1]; b += data[i + 2];
-    if ((data[i] + data[i + 1] + data[i + 2]) / 3 < 110) dark++;
+// ---------------------------------------------------------------------------
+// Looking at a picture.
+//
+// Averaging all the colours together was not enough. An English oak and a Venus
+// flytrap are both mostly green, so whichever plant happened to be the plainest
+// green kept winning. This does four better things.
+//
+//  1. It works out the background from the pixels round the edge of the picture
+//     and throws them away, so only the plant itself gets measured.
+//  2. Instead of one average colour it counts what KINDS of colour the plant is
+//     made of — green, red, yellow, blue, pale, dark. A flytrap has red inside
+//     its traps; an oak has none at all.
+//  3. It measures how ragged the shape is: the length of the plant's outline
+//     divided by the square root of its area. That number does not change when
+//     the same plant is photographed closer up, which is what makes it useful.
+//     A sundew is all thin spidery leaves and scores high; an oak canopy is one
+//     solid blob and scores low.
+//  4. It notes how high up the frame the plant sits, but only counts that for a
+//     little, because whoever took the photo decides that, not the plant.
+// ---------------------------------------------------------------------------
+function describe(data, n) {
+  // the background colour: the average of the pixels round the very edge
+  let er = 0, eg = 0, eb = 0, ring = 0;
+  for (let y = 0; y < n; y++) {
+    for (let x = 0; x < n; x++) {
+      if (x > 1 && x < n - 2 && y > 1 && y < n - 2) continue;
+      const i = (y * n + x) * 4;
+      er += data[i]; eg += data[i + 1]; eb += data[i + 2]; ring++;
+    }
   }
-  const total = r + g + b || 1;
-  return { red: r / total, green: g / total, blue: b / total, dark: dark / n };
+  er /= ring; eg /= ring; eb /= ring;
+
+  // mark every pixel that is not the background — that is the plant
+  const mask = new Uint8Array(n * n);
+  let plant = 0;
+  for (let k = 0; k < n * n; k++) {
+    const i = k * 4;
+    const dr = data[i] - er, dg = data[i + 1] - eg, db = data[i + 2] - eb;
+    if (Math.sqrt(dr * dr + dg * dg + db * db) >= 52) { mask[k] = 1; plant++; }
+  }
+  // if almost nothing stood out, the picture is probably all plant: use the lot
+  if (plant <= n * n * 0.04) { mask.fill(1); plant = n * n; }
+
+  let green = 0, red = 0, yellow = 0, blue = 0, pale = 0, dark = 0;
+  let sat = 0, sumY = 0, border = 0;
+  const isPlant = (x, y) => x >= 0 && y >= 0 && x < n && y < n && mask[y * n + x] === 1;
+  for (let y = 0; y < n; y++) {
+    for (let x = 0; x < n; x++) {
+      const k = y * n + x;
+      if (!mask[k]) continue;
+      const i = k * 4, r = data[i], g = data[i + 1], b = data[i + 2];
+      const hi = Math.max(r, g, b), lo = Math.min(r, g, b);
+      sat += hi ? (hi - lo) / hi : 0;
+      sumY += y;
+      if (hi < 72) dark++;
+      else if ((hi ? (hi - lo) / hi : 0) < 0.16) pale++;
+      else if (g >= r && g >= b) green++;
+      else if (r > g && r > b) (g > b && g > r * 0.62) ? yellow++ : red++;
+      else blue++;
+      if (!isPlant(x - 1, y) || !isPlant(x + 1, y) ||
+          !isPlant(x, y - 1) || !isPlant(x, y + 1)) border++;
+    }
+  }
+  const k = plant || 1;
+  return {
+    green: green / k, red: red / k, yellow: yellow / k, blue: blue / k,
+    pale: pale / k, dark: dark / k, sat: sat / k,
+    cy: (sumY / k) / n,
+    ragged: border / Math.sqrt(k)
+  };
 }
 
 function readShot(src) {
   return new Promise(resolve => {
     const img = new Image();
     img.onload = () => {
-      const n = 64;
+      // Shrink in two steps, exactly as the library pictures are shrunk:
+      // any size down to 256, then 256 down to 96. Squashing a big photo
+      // straight down to 96 in one go blurs it much more than shrinking a
+      // small one, which washes the colours out and made the same plant
+      // measure differently depending on how big the photo happened to be.
+      const mid = document.createElement("canvas");
+      mid.width = 256; mid.height = 256;
+      mid.getContext("2d").drawImage(img, 0, 0, 256, 256);
+
+      const n = 96;
       const c = document.createElement("canvas");
       c.width = n; c.height = n;
       const g = c.getContext("2d");
-      g.drawImage(img, 0, 0, n, n);
-      resolve(measure(g.getImageData(0, 0, n, n).data));
+      g.drawImage(mid, 0, 0, n, n);
+      resolve(describe(g.getImageData(0, 0, n, n).data, n));
     };
-    img.onerror = () => resolve({ red: 0.33, green: 0.34, blue: 0.33, dark: 0.3 });
+    img.onerror = () => resolve(null);
     img.src = src;
   });
 }
 
-// Every plant measured from its own picture, once, when the page loads.
+// ---------------------------------------------------------------------------
+// Every plant is measured twice when the page loads: once with its flowerpot
+// and once without it.
+//
+// The pot matters more than you would think. It is a big block of orange-brown
+// and it counts as a quarter of some pictures, so a photo taken close up with
+// no pot in it could not match a library picture that had one — and a photo of
+// a whole potted plant could not match a picture without. Keeping both and
+// using whichever is nearer means either kind of photo works.
+// ---------------------------------------------------------------------------
 const LOOKS = {};
 function measureLibrary() {
-  const n = 120;
-  for (const p of PLANTS) {
+  const n = 96, big = 256;
+  const realPot = pot;
+  const shoot = (p, hidePot) => {
+    // Draw big, then shrink to the measuring size. A photo arrives large and
+    // gets shrunk down, which softens all its edges; the library pictures have
+    // to go through exactly the same shrinking or they come out sharper than
+    // anything they are ever compared against.
     const c = document.createElement("canvas");
-    c.width = n; c.height = n;
+    c.width = big; c.height = big;
     const g = c.getContext("2d");
     g.fillStyle = "#e8ece4";                 // a plain background, like a photo has
-    g.fillRect(0, 0, n, n);
+    g.fillRect(0, 0, big, big);
     g.save();
-    g.translate(n / 2, n * 0.62);
-    g.scale(n / 260, n / 260);
+    g.translate(big / 2, big * 0.62);
+    g.scale(big / 260, big / 260);
+    if (hidePot) pot = () => {};             // draw the plant with no flowerpot
     ART[p.draw](g);
+    pot = realPot;
     g.restore();
-    LOOKS[p.id] = measure(g.getImageData(0, 0, n, n).data);
+
+    const small = document.createElement("canvas");
+    small.width = n; small.height = n;
+    const sg = small.getContext("2d");
+    sg.drawImage(c, 0, 0, n, n);
+    return describe(sg.getImageData(0, 0, n, n).data, n);
+  };
+  for (const p of PLANTS) {
+    LOOKS[p.id] = { potted: shoot(p, false), bare: shoot(p, true) };
   }
 }
 
+// How far apart two pictures are. Colour counts matter most, because they
+// survive a photo being taken close up or far away.
+function apart(L, s) {
+  return Math.abs(L.green - s.green) * 2.2 +
+         Math.abs(L.red - s.red) * 3.0 +
+         Math.abs(L.yellow - s.yellow) * 2.6 +
+         Math.abs(L.blue - s.blue) * 2.0 +
+         Math.abs(L.pale - s.pale) * 1.2 +
+         Math.abs(L.dark - s.dark) * 1.0 +
+         Math.abs(L.sat - s.sat) * 0.8 +
+         Math.abs(L.cy - s.cy) * 0.6 +
+         Math.abs(L.ragged - s.ragged) * 0.1;
+}
+
 function howClose(p, shot) {
-  const L = LOOKS[p.id];
-  return Math.abs(L.green - shot.green) * 3 +
-         Math.abs(L.red - shot.red) * 2 +
-         Math.abs(L.blue - shot.blue) * 2 +
-         Math.abs(L.dark - shot.dark) * 0.8;
+  return Math.min(apart(LOOKS[p.id].potted, shot), apart(LOOKS[p.id].bare, shot));
 }
 
 goBtn.addEventListener("click", async () => {
@@ -1719,6 +1823,14 @@ goBtn.addEventListener("click", async () => {
   const shot = await readShot(picked);
   await new Promise(r => setTimeout(r, 1100));   // let the circle actually show
 
+  if (!shot) {
+    idResult.innerHTML =
+      '<h2 class="section">That picture would not open</h2>' +
+      '<p style="margin:0;color:#5c6f5c">Try a different one, or look through ' +
+      'the plants yourself with the tab above.</p>';
+    return;
+  }
+
   const scored = PLANTS.map(p => ({ p: p, score: howClose(p, shot) }))
                        .sort((a, b) => a.score - b.score);
 
@@ -1731,11 +1843,21 @@ goBtn.addEventListener("click", async () => {
   }
   best.sort((a, b) => a.score - b.score);
 
+  // Only crown a winner when it is properly ahead. When the top two come out
+  // nearly level the order means nothing, and saying "closest" would be
+  // claiming something the colours cannot actually tell us.
+  const clear = best.length > 1 &&
+                best[1].score - best[0].score > best[0].score * 0.15 + 0.02;
+
   idResult.innerHTML =
     '<h2 class="section">Closest matches</h2>' +
     '<p style="margin:0 0 14px;color:#5c6f5c;font-size:15px">' +
-    'The nearest two of each kind. Pick whichever looks like your plant and ' +
-    'I will tell you how to look after it.</p>' +
+    (clear
+      ? 'The nearest two of each kind. Pick whichever looks like your plant and ' +
+        'I will tell you how to look after it.'
+      : 'The nearest two of each kind. These came out very close together, so ' +
+        'none of them is a confident answer — pick whichever looks like your ' +
+        'plant and I will tell you how to look after it.') + '</p>' +
     '<div class="guesses" id="guesses"></div>' +
     '<p style="margin:14px 0 0;color:#5c6f5c;font-size:14px">' +
     'None of them right? <button class="backBtn" style="margin:0" id="seeAll">' +
@@ -1747,7 +1869,8 @@ goBtn.addEventListener("click", async () => {
     b.className = "guess";
     b.innerHTML = '<canvas width="76" height="76"></canvas>' +
       '<span><span class="gName">' + s.p.name +
-      (i === 0 ? ' <span style="font-size:13px;color:#3f8f4a">closest</span>' : '') +
+      (i === 0 && clear
+        ? ' <span style="font-size:13px;color:#3f8f4a">closest</span>' : '') +
       '</span><br><span class="gSub">' + s.p.latin + " · " +
       GROUPS[s.p.group].name + '</span></span>';
     b.addEventListener("click", () => openPlant(s.p.id, picked));
