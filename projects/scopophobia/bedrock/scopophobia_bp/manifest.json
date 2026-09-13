@@ -1,0 +1,28 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "Scopophobia",
+    "description": "Day 2 it comes out. Day 3 they turn. Day 5 it goes quiet.",
+    "uuid": "e5a22f15-564d-4a48-b035-1a34da5c45d1",
+    "version": [1, 0, 0],
+    "min_engine_version": [1, 21, 0]
+  },
+  "modules": [
+    {
+      "type": "data",
+      "uuid": "93113024-39e6-4a37-8b9e-0ff1ba57022b",
+      "version": [1, 0, 0]
+    },
+    {
+      "type": "script",
+      "language": "javascript",
+      "uuid": "7f6d1b40-1e3f-4317-8190-64044f46cf1c",
+      "version": [1, 0, 0],
+      "entry": "scripts/main.js"
+    }
+  ],
+  "dependencies": [
+    { "module_name": "@minecraft/server", "version": "1.11.0" },
+    { "uuid": "115b16a2-8984-49d4-929a-7731b2382060", "version": [1, 0, 0] }
+  ]
+}

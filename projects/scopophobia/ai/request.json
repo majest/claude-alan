@@ -1,0 +1,82 @@
+{
+  "kind": "images",
+  "into": "art",
+  "defaults": {
+    "size": 512,
+    "steps": 4,
+    "format": "webp",
+    "quality": 84,
+    "negative": "text, letters, words, watermark, signature, logo, ui, hud, blurry, low contrast, smooth rounded shapes, realistic photograph, human face, friendly, cute, bright daylight, rainbow colours"
+  },
+  "items": [
+    {
+      "id": "creature-forest",
+      "group": "creature",
+      "seed": 11021,
+      "prompt": "a very tall thin pitch black humanoid standing between enormous spruce tree trunks at night, arms hanging far below its knees ending in long claws, no eyes and no face at all except one small round pale mouth, blocky voxel video game world made of cubes, pixel art textures, low light, deep blue darkness, fog between the trees, game screenshot"
+    },
+    {
+      "id": "creature-watching",
+      "group": "creature",
+      "seed": 4412,
+      "prompt": "a thin black figure standing perfectly still at the edge of a dark pine forest, seen from a distance across a clearing, watching, no face except a small round pale mouth, blocky voxel video game world of cubic blocks and pixel textures, night, moonlight, long shadows, unsettling, game screenshot",
+      "steps": 5
+    },
+    {
+      "id": "creature-climbing",
+      "group": "creature",
+      "seed": 7781,
+      "prompt": "a long limbed black creature climbing up the outside wall of a small blocky wooden and stone house at night, clinging to the wall with clawed hands, glass window lit yellow from inside, voxel video game world made of cube blocks with pixel art textures, dark blue night sky, game screenshot"
+    },
+    {
+      "id": "creature-close",
+      "group": "creature",
+      "seed": 3390,
+      "prompt": "close view of the head and shoulders of a matte black blocky creature, a perfectly smooth cube head with no eyes and no nose, one small round pale circular mouth in the middle of its face, thin neck, low polygon voxel game art, pixel texture, dark background, cold blue rim light, menacing"
+    },
+    {
+      "id": "bunker-surface",
+      "group": "bunker",
+      "seed": 5150,
+      "prompt": "a wide circle of grey stone brick set into mossy forest ground, iron bars standing around the rim of the circle, a small iron trapdoor at the centre, giant dark spruce trees crowding in around it, dusk, blocky voxel video game world of cubic blocks with pixel art textures, abandoned, overgrown, game screenshot"
+    },
+    {
+      "id": "bunker-room",
+      "group": "bunker",
+      "seed": 9004,
+      "prompt": "inside a round underground stone brick room with a huge stone cylinder standing in the middle of it, four dark doorways leading off in four directions, a few blue soul lanterns hanging from the ceiling, cracked and mossy bricks, blocky voxel video game world of cube blocks and pixel textures, dim, abandoned bunker, game screenshot"
+    },
+    {
+      "id": "bunker-chests",
+      "group": "bunker",
+      "seed": 6613,
+      "prompt": "a long underground stone brick store room with two neat rows of wooden chests down the middle, cracked bricks, one dim lantern, dust, blocky voxel video game world made of cubes with pixel art textures, abandoned supply room, game screenshot"
+    },
+    {
+      "id": "bunker-cave",
+      "group": "bunker",
+      "seed": 2277,
+      "prompt": "a stone brick doorway opening into an enormous natural cavern, the ceiling lost in darkness, gravel and boulders on the floor, a single lantern by the door, blocky voxel video game world of cubic blocks with pixel art textures, very dark, vast empty space, game screenshot"
+    },
+    {
+      "id": "giant-spruce",
+      "group": "world",
+      "seed": 8821,
+      "prompt": "a forest of enormous spruce trees with trunks four blocks thick reaching far above the canopy, dark green needles in heavy layered skirts, podzol and ferns on the ground, mist, blocky voxel video game world made of cubes with pixel art textures, dusk, game screenshot"
+    },
+    {
+      "id": "day-five",
+      "group": "world",
+      "seed": 1744,
+      "prompt": "an empty voxel game landscape at night with no animals and no people anywhere, still grass, a dead tree, a wide dark sky with faint stars, blocky world of cube blocks with pixel art textures, silent, lonely, desolate, game screenshot"
+    },
+    {
+      "id": "pack-icon",
+      "group": "icon",
+      "seed": 402,
+      "size": 512,
+      "steps": 5,
+      "prompt": "square emblem, a single small round pale circle like an open mouth glowing faintly in the centre of a solid black square, thin claw marks scratched across the black around it, flat graphic, high contrast, no text"
+    }
+  ]
+}

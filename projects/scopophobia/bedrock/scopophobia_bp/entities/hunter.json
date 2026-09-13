@@ -1,0 +1,87 @@
+{
+  "format_version": "1.21.0",
+  "minecraft:entity": {
+    "description": {
+      "identifier": "scopophobia:hunter",
+      "is_spawnable": true,
+      "is_summonable": true,
+      "is_experimental": false
+    },
+    "components": {
+      "minecraft:type_family": { "family": ["hunter", "monster", "mob", "undead"] },
+      "minecraft:physics": {},
+      "minecraft:pushable": { "is_pushable": false, "is_pushable_by_piston": true },
+      "minecraft:collision_box": { "width": 0.62, "height": 1.95 },
+      "minecraft:health": { "value": 60, "max": 60 },
+      "minecraft:movement": { "value": 0.33 },
+      "minecraft:knockback_resistance": { "value": 0.9 },
+      "minecraft:attack": { "damage": 8 },
+      "minecraft:fire_immune": true,
+      "minecraft:breathable": {
+        "total_supply": 15, "suffocate_time": 0,
+        "breathes_air": true, "breathes_water": true
+      },
+      "minecraft:persistent": {},
+      "minecraft:nameable": { "allow_name_tag_renaming": false },
+      "minecraft:conditional_bandwidth_optimization": {},
+
+      "minecraft:can_climb": {},
+      "minecraft:jump.static": {},
+      "minecraft:movement.basic": {},
+      "minecraft:navigation.walk": {
+        "can_path_over_water": true,
+        "avoid_water": false,
+        "can_pass_doors": true,
+        "can_open_doors": true,
+        "can_break_doors": true,
+        "can_walk": true,
+        "can_sink": false
+      },
+
+      "minecraft:break_blocks": {
+        "breakable_blocks": [
+          "minecraft:oak_log", "minecraft:spruce_log", "minecraft:birch_log",
+          "minecraft:jungle_log", "minecraft:acacia_log", "minecraft:dark_oak_log",
+          "minecraft:mangrove_log", "minecraft:cherry_log",
+          "minecraft:oak_planks", "minecraft:spruce_planks", "minecraft:birch_planks",
+          "minecraft:jungle_planks", "minecraft:acacia_planks", "minecraft:dark_oak_planks",
+          "minecraft:mangrove_planks", "minecraft:cherry_planks", "minecraft:bamboo_planks",
+          "minecraft:crimson_planks", "minecraft:warped_planks",
+          "minecraft:oak_leaves", "minecraft:spruce_leaves", "minecraft:birch_leaves",
+          "minecraft:jungle_leaves", "minecraft:acacia_leaves", "minecraft:dark_oak_leaves",
+          "minecraft:mangrove_leaves", "minecraft:cherry_leaves",
+          "minecraft:azalea_leaves", "minecraft:flowering_azalea_leaves",
+          "minecraft:glass", "minecraft:glass_pane", "minecraft:tinted_glass",
+          "minecraft:dirt", "minecraft:grass_block", "minecraft:podzol",
+          "minecraft:mycelium", "minecraft:farmland", "minecraft:moss_block",
+          "minecraft:short_grass", "minecraft:tall_grass", "minecraft:fern",
+          "minecraft:oak_fence", "minecraft:oak_door", "minecraft:oak_trapdoor",
+          "minecraft:oak_stairs", "minecraft:oak_slab"
+        ]
+      },
+
+      "minecraft:behavior.nearest_attackable_target": {
+        "priority": 1,
+        "must_see": false,
+        "must_reach": false,
+        "reselect_targets": true,
+        "within_radius": 80,
+        "entity_types": [
+          {
+            "filters": { "test": "is_family", "subject": "other", "value": "player" },
+            "max_dist": 80
+          }
+        ]
+      },
+      "minecraft:behavior.melee_attack": {
+        "priority": 2,
+        "speed_multiplier": 1.1,
+        "track_target": true,
+        "reach_multiplier": 1.4
+      },
+      "minecraft:behavior.hurt_by_target": { "priority": 3 },
+      "minecraft:behavior.random_stroll": { "priority": 6, "speed_multiplier": 0.9 },
+      "minecraft:behavior.look_at_player": { "priority": 7, "look_distance": 16 }
+    }
+  }
+}
