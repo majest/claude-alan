@@ -1,0 +1,12 @@
+{
+  "values": [
+    "#extinction:turned",
+    "minecraft:zombie", "minecraft:skeleton", "minecraft:spider",
+    "minecraft:creeper", "minecraft:enderman", "minecraft:witch",
+    "minecraft:husk", "minecraft:stray", "minecraft:drowned",
+    "minecraft:zombie_villager", "minecraft:cave_spider", "minecraft:slime",
+    "minecraft:bat", "minecraft:squid", "minecraft:glow_squid",
+    "minecraft:cod", "minecraft:salmon", "minecraft:tropical_fish",
+    "minecraft:pufferfish", "minecraft:bee", "minecraft:phantom"
+  ]
+}
