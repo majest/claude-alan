@@ -2,7 +2,7 @@
   "format_version": 2,
   "header": {
     "name": "Scopophobia",
-    "description": "What the creature looks like. Needed, or it is invisible.",
+    "description": "What the creature looks like: the model, the skin and the way it walks. \u00a78Turn this on with the behaviour pack.\u00a7r",
     "uuid": "115b16a2-8984-49d4-929a-7731b2382060",
     "version": [
       1,

@@ -8,6 +8,37 @@ you. Look back at it and it knows, and it starts running.
 
 The idea, the timeline, the creature, the bunker and the book are Alan's.
 
+## What it is
+
+**Scopophobia is the fear of being looked at.**
+
+For two days nothing happens. Build something, dig, sleep if you like.
+
+On the second night it comes out: far too tall and far too thin, arms hanging
+past its knees with claws on the end of them, and no face at all except one
+round white mouth. There is only ever one of it, it only hunts in the dark, and
+it always knows where you are.
+
+A tower will not save you, because it climbs. A wooden house will not save you,
+because it comes straight through wood, glass, leaves, grass and dirt. Stone
+will, for now.
+
+It has two things an ordinary mob does not. It has a tongue, and inside about
+twelve blocks it will catch you with it and drag you in. And if you look
+straight at it, it knows, and it starts running.
+
+Then the world goes wrong on its own. On the third day the animals turn on you.
+By the fifth there is almost nothing left alive and the music has stopped, and
+what is left is caves, weather, your own footsteps and whatever is still
+breathing out there. On the sixth night there are far more of them than there
+should be, and it stays that way.
+
+Somebody was here before you. Out in the old spruce forests, under a circle of
+stone bricks with iron bars round the rim, there are bunkers. A round room with
+four doors. A store room holding what they had left. A room that fell in. A room
+that opens into a cave nobody dug. And one small room with a single chest in the
+middle of it, with one thing inside, which is worth reading.
+
 ```
 index.html      the page: what it does, how to install it, both downloads
 java/           the Java data pack — the real thing, edit these files
@@ -16,7 +47,7 @@ bedrock/        the Bedrock add-on, in two halves
   scopophobia_rp/   resource pack: the model, the texture, the animation
 art/            pictures, and index.json saying what exists
 ai/request.json what was asked of the machine at home
-tools/          five small scripts, explained below
+tools/          six small scripts, explained below
 ```
 
 ## Why not a real mod
@@ -48,7 +79,7 @@ differently from Java and gets them wrong quietly. Everything the bunker places
 there is a plain block with no state on it, which is why the way down is a
 staircase.
 
-## The five tools
+## The six tools
 
 Run them from this folder.
 
@@ -59,6 +90,7 @@ python3 tools/make-bedrock.py     # rebuild the Bedrock bunker, tree and texture
 python3 tools/render-creature.py  # draw the creature from its own model file
 python3 tools/embed-pack.py       # copy both packs into index.html
 python3 tools/build-downloads.py  # write the two files the page links to
+python3 tools/make-icon.py        # redraw the pack icon
 ```
 
 **`check.py`** catches the mistakes that actually happen: a function calling one
@@ -82,6 +114,13 @@ it is worst at.
 page can build the downloads with no server behind it. Pictures go in as base64.
 It rewrites the block between the `PACK DATA` markers. **Do not edit that block
 by hand.**
+
+**`make-icon.py`** draws the pack icon — the picture Minecraft shows beside the
+pack in its list. It is drawn at 64x64 and blown up with no smoothing, so every
+pixel stays a hard square and it looks like it belongs in the game. It writes
+four copies, because the two editions want different names in different places:
+`java/pack.png`, a `pack_icon.png` in each half of the add-on, and one for the
+website.
 
 **`build-downloads.py`** writes `scopophobia.mcaddon` and
 `scopophobia-java.zip` next to `index.html`. The page can build both inside the
