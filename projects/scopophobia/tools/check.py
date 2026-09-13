@@ -192,6 +192,30 @@ if os.path.isdir(BED):
                 if bone not in names:
                     bed.append("the animation moves bone %s, which the model does not have" % bone)
 
+# ---------------------------------------------------------------------------
+# are the two download files still the same as the folders they came from?
+# a stale download is worse than no download: it looks like it worked.
+# ---------------------------------------------------------------------------
+import zipfile
+for folder, archive in (("java", "scopophobia-java.zip"),
+                        ("bedrock", "scopophobia.mcaddon")):
+    path = os.path.join(HERE, archive)
+    root = os.path.join(HERE, folder)
+    if not os.path.exists(path):
+        bed.append("%s has not been built — run tools/build-downloads.py" % archive)
+        continue
+    have = {}
+    for dp, dn, fn in os.walk(root):
+        for f in fn:
+            if f.startswith("."):
+                continue
+            full = os.path.join(dp, f)
+            have[os.path.relpath(full, root).replace(os.sep, "/")] = open(full, "rb").read()
+    with zipfile.ZipFile(path) as z:
+        inside = {n: z.read(n) for n in z.namelist()}
+    if inside != have:
+        bed.append("%s is out of date — run tools/build-downloads.py" % archive)
+
 print("bedrock: %d json files" % len(packs))
 if bed:
     print("\n%d Bedrock problem(s):" % len(bed))

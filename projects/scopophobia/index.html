@@ -56,13 +56,14 @@
   }
 
   .get { display: flex; flex-wrap: wrap; gap: 12px; margin: 20px 0 8px; }
-  button.dl {
-    font: inherit; font-weight: 600; cursor: pointer;
-    background: var(--blood); color: #fff; border: 0;
+  .dl {
+    font: inherit; font-weight: 600; cursor: pointer; display: inline-block;
+    background: var(--blood); color: #fff; border: 0; text-decoration: none;
     padding: 14px 22px; border-radius: 10px;
   }
-  button.dl:hover { background: #b9291f; }
-  button.dl[disabled] { background: #3a2320; color: #8b7a77; cursor: not-allowed; }
+  .dl:hover { background: #b9291f; color: #fff; }
+  button.dl { background: #2a2d29; color: var(--ink); }
+  button.dl:hover { background: #343830; }
   .said { color: var(--dim); font-size: 15px; min-height: 1.6em; margin: 0 0 8px; }
 
   .card {
@@ -221,10 +222,93 @@
 
 <h2>Get it</h2>
 <div class="get">
-  <button class="dl" id="javaBtn">Java Edition &mdash; data pack (.zip)</button>
-  <button class="dl" id="bedrockBtn">Bedrock Edition &mdash; add-on (.mcaddon)</button>
+  <a class="dl" href="scopophobia.mcaddon" download>Bedrock Edition &mdash; add-on</a>
+  <a class="dl" href="scopophobia-java.zip" download>Java Edition &mdash; data pack</a>
 </div>
-<p class="said" id="said"></p>
+<p class="said" id="said">Two real files. If your browser will not save them, the
+  buttons at the bottom of this page build the same two files inside the browser
+  instead.</p>
+
+<div class="card warn">
+  <h3>If double-clicking it does nothing</h3>
+  <p>
+    Only the <b>Bedrock</b> file is meant to open when you double-click it. The
+    Java one is a data pack: double-clicking a data pack does nothing at all,
+    ever, and that is not a fault. It has to be copied into a folder. See below.
+  </p>
+  <p>
+    If the Bedrock file does nothing either, it is almost always one of these.
+    The first one is the usual answer on Windows:
+  </p>
+  <ul>
+    <li><b>The file is not really called .mcaddon.</b> Windows hides the end of
+      filenames, so <code>scopophobia.mcaddon.zip</code> looks identical to
+      <code>scopophobia.mcaddon</code> in Explorer &mdash; and double-clicking the
+      first one does nothing useful. Turn on
+      <b>View &rarr; Show &rarr; File name extensions</b> and look properly. If
+      there is a <code>.zip</code> on the end, delete it.</li>
+    <li><b>Windows does not know what opens it.</b> Right-click the file, choose
+      <b>Open with</b>, and pick Minecraft. If Minecraft is not offered, it was
+      installed in a way that never set the association up.</li>
+    <li><b>Minecraft is already running.</b> Close it completely, then
+      double-click. It should start up and say it is importing.</li>
+    <li><b>You are on a Mac.</b> There is no Bedrock Edition for macOS at all, so
+      nothing on a Mac can open a <code>.mcaddon</code>. A Mac runs Java Edition
+      only &mdash; use the Java data pack.</li>
+    <li><b>You are on a console.</b> Xbox, PlayStation and Switch cannot import
+      add-ons directly. The usual way round it is to apply the pack to a
+      <b>Realm</b> from a phone or a PC and then join that Realm from the console.</li>
+  </ul>
+  <p style="margin-bottom:0">
+    Still nothing? Put it in by hand instead &mdash; that always works.
+  </p>
+</div>
+
+<div class="card">
+  <h3>Putting it in by hand on Windows</h3>
+  <p>
+    This skips the import entirely. It cannot fail to find Minecraft, because
+    you are putting the files where Minecraft already looks.
+  </p>
+  <ol>
+    <li>In File Explorer, turn on <b>View &rarr; Show &rarr; File name extensions</b>.
+      Do this first. Windows hides the end of filenames by default, which is how
+      a file called <code>scopophobia.mcaddon.zip</code> looks exactly like
+      <code>scopophobia.mcaddon</code>.</li>
+    <li>Rename <code>scopophobia.mcaddon</code> to <code>scopophobia.zip</code>
+      and unzip it. Inside are two folders,
+      <code>scopophobia_bp</code> and <code>scopophobia_rp</code>.</li>
+    <li>Press <kbd>Windows</kbd>+<kbd>R</kbd>, paste this in and press Enter:
+      <pre><code>%LOCALAPPDATA%\Packages\Microsoft.MinecraftUWP_8wekyb3d8bbwe\LocalState\games\com.mojang</code></pre></li>
+    <li>Put <code>scopophobia_bp</code> into the <b>behavior_packs</b> folder, and
+      <code>scopophobia_rp</code> into <b>resource_packs</b>. Note the American
+      spelling of behavior &mdash; that is the folder's real name.</li>
+    <li>Start Minecraft, create a world, and turn Scopophobia on under
+      <b>Behaviour Packs</b>. Turn the resource pack on too, or the creature is
+      invisible.</li>
+  </ol>
+  <p style="margin-bottom:0">
+    If the <code>com.mojang</code> folder is not there, Minecraft has never been
+    run on that machine. Start it once and it appears.
+  </p>
+</div>
+
+<div class="card">
+  <h3>Where are you playing?</h3>
+  <table class="days">
+    <tr><th>Machine</th><th>Which file, and what to do with it</th></tr>
+    <tr><td style="color:var(--dim);font-weight:600;width:9em">Windows PC</td>
+        <td>Either. For Bedrock, double-click the <code>.mcaddon</code>. For Java, the <code>.zip</code> goes in the datapacks folder.</td></tr>
+    <tr><td style="color:var(--dim);font-weight:600">Mac</td>
+        <td>Java only. There is no Bedrock for macOS.</td></tr>
+    <tr><td style="color:var(--dim);font-weight:600">iPad or iPhone</td>
+        <td>Bedrock. Download it, open the Files app, tap the file, and choose Minecraft.</td></tr>
+    <tr><td style="color:var(--dim);font-weight:600">Android</td>
+        <td>Bedrock. Download it, open Downloads, tap the file, and choose Minecraft.</td></tr>
+    <tr><td style="color:var(--dim);font-weight:600">Xbox, PlayStation, Switch</td>
+        <td>Neither, directly. Consoles cannot import add-ons. Put it on a Realm from a phone or PC and join the Realm.</td></tr>
+  </table>
+</div>
 
 <div class="card">
   <h3>Installing it on Java Edition</h3>
@@ -309,6 +393,18 @@
     wrong and it gets fixed.
   </p>
 </div>
+
+<h2>If the download will not save</h2>
+<p>
+  These build the same two files inside your browser out of the copies stored in
+  this page, which sometimes works when a download does not. It also works with
+  no internet at all.
+</p>
+<div class="get">
+  <button class="dl" id="bedrockBtn">Build the Bedrock add-on here</button>
+  <button class="dl" id="javaBtn">Build the Java data pack here</button>
+</div>
+<p class="said" id="built"></p>
 
 <h2>Every file in it</h2>
 <p style="color:var(--dim);font-size:15px">
@@ -493,7 +589,10 @@ function makeZip(files) {
   const out = new Uint8Array(total);
   let k = 0;
   for (const p of parts) { out.set(p, k); k += p.length; }
-  return new Blob([out], { type: "application/zip" });
+  // Deliberately not "application/zip": browsers treat a zip as something to
+  // help with, and helping means renaming it or unzipping it, either of which
+  // stops Minecraft recognising it.
+  return new Blob([out], { type: "application/octet-stream" });
 }
 
 function save(blob, filename) {
@@ -507,7 +606,7 @@ function save(blob, filename) {
   setTimeout(() => URL.revokeObjectURL(url), 4000);
 }
 
-const said = document.getElementById("said");
+const said = document.getElementById("built");
 
 function download(which, filename, advice) {
   const files = PACK[which];

@@ -16,7 +16,7 @@ bedrock/        the Bedrock add-on, in two halves
   scopophobia_rp/   resource pack: the model, the texture, the animation
 art/            pictures, and index.json saying what exists
 ai/request.json what was asked of the machine at home
-tools/          four small scripts, explained below
+tools/          five small scripts, explained below
 ```
 
 ## Why not a real mod
@@ -48,7 +48,7 @@ differently from Java and gets them wrong quietly. Everything the bunker places
 there is a plain block with no state on it, which is why the way down is a
 staircase.
 
-## The four tools
+## The five tools
 
 Run them from this folder.
 
@@ -58,6 +58,7 @@ python3 tools/make-functions.py   # rebuild the Java bunker and tree
 python3 tools/make-bedrock.py     # rebuild the Bedrock bunker, tree and texture
 python3 tools/render-creature.py  # draw the creature from its own model file
 python3 tools/embed-pack.py       # copy both packs into index.html
+python3 tools/build-downloads.py  # write the two files the page links to
 ```
 
 **`check.py`** catches the mistakes that actually happen: a function calling one
@@ -82,8 +83,17 @@ page can build the downloads with no server behind it. Pictures go in as base64.
 It rewrites the block between the `PACK DATA` markers. **Do not edit that block
 by hand.**
 
-After changing anything in `java/` or `bedrock/`, run `check.py` and then
-`embed-pack.py`, or the downloads will still hold the old version.
+**`build-downloads.py`** writes `scopophobia.mcaddon` and
+`scopophobia-java.zip` next to `index.html`. The page can build both inside the
+browser too, but a file built by JavaScript arrives as a blob and browsers do
+awkward things to blobs — Safari unzips them, others rename them to `.zip`, and
+a renamed `.mcaddon` will not open in Minecraft. A real file on the website is
+just a file. Both exist; the links point at the real files and the buttons are
+the fallback.
+
+After changing anything in `java/` or `bedrock/`, run `embed-pack.py` **and**
+`build-downloads.py`, then `check.py` — which now refuses to pass if either
+download is out of date with the folder it came from.
 
 ## How the Java side fits together
 
