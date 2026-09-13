@@ -1,0 +1,97 @@
+{
+  "kind": "images",
+  "generated": "2026-09-13T14:58:18+0000",
+  "note": "hunter-* are rendered from the model by tools/render-creature.py; the rest were generated from ai/request.json",
+  "items": [
+    {
+      "id": "bunker-cave",
+      "file": "bunker-cave.webp"
+    },
+    {
+      "id": "bunker-chests",
+      "file": "bunker-chests.webp"
+    },
+    {
+      "id": "bunker-room",
+      "file": "bunker-room.webp"
+    },
+    {
+      "id": "bunker-surface",
+      "file": "bunker-surface.webp"
+    },
+    {
+      "id": "creature-climbing",
+      "file": "creature-climbing.webp"
+    },
+    {
+      "id": "creature-watching",
+      "file": "creature-watching.webp"
+    },
+    {
+      "id": "day-five",
+      "file": "day-five.webp"
+    },
+    {
+      "id": "giant-spruce",
+      "file": "giant-spruce.webp"
+    },
+    {
+      "id": "hunter-behind",
+      "file": "hunter-behind.webp"
+    },
+    {
+      "id": "hunter-climb",
+      "file": "hunter-climb.webp"
+    },
+    {
+      "id": "hunter-far",
+      "file": "hunter-far.webp"
+    },
+    {
+      "id": "hunter-reach",
+      "file": "hunter-reach.webp"
+    },
+    {
+      "id": "hunter-stand",
+      "file": "hunter-stand.webp"
+    },
+    {
+      "id": "hunter-store",
+      "file": "hunter-store.webp"
+    },
+    {
+      "id": "hunter-walk",
+      "file": "hunter-walk.webp"
+    },
+    {
+      "id": "pack-icon",
+      "file": "pack-icon.webp"
+    }
+  ],
+  "groups": {
+    "bunker": [
+      "bunker-cave.webp",
+      "bunker-chests.webp",
+      "bunker-room.webp",
+      "bunker-surface.webp"
+    ],
+    "world": [
+      "creature-climbing.webp",
+      "creature-watching.webp",
+      "day-five.webp",
+      "giant-spruce.webp"
+    ],
+    "creature": [
+      "hunter-behind.webp",
+      "hunter-climb.webp",
+      "hunter-far.webp",
+      "hunter-reach.webp",
+      "hunter-stand.webp",
+      "hunter-store.webp",
+      "hunter-walk.webp"
+    ],
+    "icon": [
+      "pack-icon.webp"
+    ]
+  }
+}

@@ -88,4 +88,93 @@ if problems:
     for p in problems:
         print("  -", p)
     sys.exit(1)
-print("no problems found")
+print("java: no problems found")
+
+# ---------------------------------------------------------------------------
+# the Bedrock add-on
+# ---------------------------------------------------------------------------
+BED = os.path.join(HERE, "bedrock")
+bed = []
+if os.path.isdir(BED):
+    packs = {}
+    for dp, dn, fn in os.walk(BED):
+        for f in fn:
+            full = os.path.join(dp, f)
+            rel = os.path.relpath(full, HERE)
+            if f.endswith(".json"):
+                try:
+                    packs[rel] = json.load(open(full, encoding="utf-8"))
+                except Exception as e:
+                    bed.append("%s is not valid JSON: %s" % (rel, e))
+
+    def find(tail):
+        for k in packs:
+            if k.replace(os.sep, "/").endswith(tail):
+                return k, packs[k]
+        return None, None
+
+    bpk, bp = find("scopophobia_bp/manifest.json")
+    rpk, rp = find("scopophobia_rp/manifest.json")
+    ek, ent = find("entities/hunter.json")
+    ck, cli = find("entity/hunter.entity.json")
+    gk, geo = find("models/entity/hunter.geo.json")
+    rck, rc = find("render_controllers/hunter.render.json")
+    ak, anim = find("animations/hunter.animation.json")
+
+    for name, obj in [("behaviour manifest", bp), ("resource manifest", rp),
+                      ("entity", ent), ("client entity", cli),
+                      ("geometry", geo), ("render controller", rc),
+                      ("animation", anim)]:
+        if obj is None:
+            bed.append("the Bedrock %s is missing" % name)
+
+    if bp and rp:
+        ids = [bp["header"]["uuid"]] + [m["uuid"] for m in bp["modules"]]
+        ids += [rp["header"]["uuid"]] + [m["uuid"] for m in rp["modules"]]
+        if len(set(ids)) != len(ids):
+            bed.append("two Bedrock packs share a uuid — Minecraft will load only one")
+        dep = [d.get("uuid") for d in bp.get("dependencies", [])]
+        if rp["header"]["uuid"] not in dep:
+            bed.append("the behaviour pack does not depend on the resource pack")
+        entry = [m for m in bp["modules"] if m["type"] == "script"]
+        if entry:
+            script = os.path.join(BED, "scopophobia_bp", entry[0]["entry"])
+            if not os.path.exists(script):
+                bed.append("the manifest points at %s, which is not there" % entry[0]["entry"])
+
+    if ent and cli:
+        a = ent["minecraft:entity"]["description"]["identifier"]
+        b = cli["minecraft:client_entity"]["description"]["identifier"]
+        if a != b:
+            bed.append("the entity is %s but the client entity is %s" % (a, b))
+    if cli and geo:
+        want = cli["minecraft:client_entity"]["description"]["geometry"]["default"]
+        have = geo["minecraft:geometry"][0]["description"]["identifier"]
+        if want != have:
+            bed.append("the client entity asks for %s but the model is %s" % (want, have))
+        tex = cli["minecraft:client_entity"]["description"]["textures"]["default"]
+        if not os.path.exists(os.path.join(BED, "scopophobia_rp", tex + ".png")):
+            bed.append("the texture %s.png is missing" % tex)
+    if cli and anim:
+        for key, name in cli["minecraft:client_entity"]["description"].get("animations", {}).items():
+            if name not in anim["animations"]:
+                bed.append("animation %s is used but never defined" % name)
+    if geo and anim:
+        names = set()
+        for b in geo["minecraft:geometry"][0]["bones"]:
+            names.add(b["name"])
+            if "parent" in b and b["parent"] not in names:
+                bed.append("bone %s has parent %s, which comes later or not at all"
+                           % (b["name"], b["parent"]))
+        for a in anim["animations"].values():
+            for bone in a.get("bones", {}):
+                if bone not in names:
+                    bed.append("the animation moves bone %s, which the model does not have" % bone)
+
+print("bedrock: %d json files" % len(packs))
+if bed:
+    print("\n%d Bedrock problem(s):" % len(bed))
+    for p in bed:
+        print("  -", p)
+    sys.exit(1)
+print("bedrock looks put together correctly")

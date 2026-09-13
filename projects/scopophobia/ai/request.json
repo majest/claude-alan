@@ -10,29 +10,20 @@
   },
   "items": [
     {
-      "id": "creature-forest",
-      "group": "creature",
-      "seed": 11021,
-      "prompt": "a very tall thin pitch black humanoid standing between enormous spruce tree trunks at night, arms hanging far below its knees ending in long claws, no eyes and no face at all except one small round pale mouth, blocky voxel video game world made of cubes, pixel art textures, low light, deep blue darkness, fog between the trees, game screenshot"
-    },
-    {
       "id": "creature-watching",
       "group": "creature",
-      "seed": 4412,
-      "prompt": "a thin black figure standing perfectly still at the edge of a dark pine forest, seen from a distance across a clearing, watching, no face except a small round pale mouth, blocky voxel video game world of cubic blocks and pixel textures, night, moonlight, long shadows, unsettling, game screenshot",
-      "steps": 5
+      "seed": 33102,
+      "prompt": "wide shot across a misty clearing at night, one tall thin black figure standing motionless at the treeline facing the viewer, very long arms, smooth blank black head with a single small pale circle, blocky voxel game world of cube blocks, moonlit, strong silhouette against pale fog, game screenshot",
+      "steps": 6,
+      "negative": "eyes, eyeball, pupils, eye sockets, two eyes, glowing eyes, face, nose, teeth, smile, eyebrows, portrait of a person, human features, text, letters, watermark, signature, ui, hud, noise, static, colour speckles, pink, magenta"
     },
     {
       "id": "creature-climbing",
       "group": "creature",
-      "seed": 7781,
-      "prompt": "a long limbed black creature climbing up the outside wall of a small blocky wooden and stone house at night, clinging to the wall with clawed hands, glass window lit yellow from inside, voxel video game world made of cube blocks with pixel art textures, dark blue night sky, game screenshot"
-    },
-    {
-      "id": "creature-close",
-      "group": "creature",
-      "seed": 3390,
-      "prompt": "close view of the head and shoulders of a matte black blocky creature, a perfectly smooth cube head with no eyes and no nose, one small round pale circular mouth in the middle of its face, thin neck, low polygon voxel game art, pixel texture, dark background, cold blue rim light, menacing"
+      "seed": 44018,
+      "prompt": "the outside wall of a small blocky wooden and stone house at night, seen from close by, one lit yellow window, grass below, blocky voxel game world of cube blocks, dark blue night sky, empty, no creature",
+      "steps": 6,
+      "negative": "eyes, eyeball, pupils, eye sockets, two eyes, glowing eyes, face, nose, teeth, smile, eyebrows, portrait of a person, human features, text, letters, watermark, signature, ui, hud, noise, static, colour speckles, pink, magenta"
     },
     {
       "id": "bunker-surface",
