@@ -10,8 +10,11 @@ The idea, the timeline, the creature, the bunker and the book are Alan's.
 
 ## What it is
 
-For two days nothing chases you. Something simply turns up beside you and stands
-there. Three times your height, thin, black, with arms that bend the wrong way
+They only come out at night. In daylight there are none of them at all: they
+arrive after dark, and any still standing at sunrise are taken away.
+
+For two days nothing chases you. After dark something simply turns up beside you
+and stands there. Three times your height, thin, black, with arms that bend the wrong way
 and no face at all except one round white mouth.
 
 It does not move while you are looking at it. Look straight at it and it knows,
@@ -20,8 +23,8 @@ taken away, and another will be standing somewhere else in a minute.
 
 | Day | What changes |
 | --- | --- |
-| 1–2 | They turn up beside you and watch. They do not move, and they are gone the moment you look away. |
-| 3 | They stop watching. They come for you and for your base, and from now on every night they arrive already hunting. |
+| 1–2 | After dark they turn up beside you and watch. They do not move, and they are gone the moment you look away. |
+| 3 | That night they stop watching. They come for you and for your base, and from now on every night they arrive already hunting. |
 | 4 | Almost no animals left. The ones there are have black eyes, come for you, and their legs stretch as they run. |
 | 5 | The music stops. |
 | 6 | More of them, every night, for good. |

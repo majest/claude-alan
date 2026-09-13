@@ -6,4 +6,7 @@ function watchers:creature/body
 execute if entity @s[tag=wt_watching] run function watchers:creature/watch
 execute unless entity @s[tag=wt_watching] run function watchers:creature/hunt
 
+# None of them are about in daylight. Whatever it was doing, dawn ends it.
+execute if score #time wt_day matches ..12999 run function watchers:creature/leave
+execute if score #time wt_day matches 22801.. run function watchers:creature/leave
 execute unless entity @p[distance=..110] run function watchers:creature/leave

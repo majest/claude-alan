@@ -11,6 +11,9 @@
 
   The rules, in one place:
 
+    every night, and only at night. In daylight there are none of them at
+    all: the ones still about when the sun comes up are taken away.
+
     day 1-2   Watchers turn up beside you and stand there. They do not move.
               Look straight at one and it comes for you. Look away and it is
               gone when you look back.
@@ -195,6 +198,9 @@ function mindWatchers() {
   for (const e of watchers()) {
     let m = mind.get(e.id);
     if (!m) { m = { mode: "watch", born: tick, seen: 0, everSeen: false }; mind.set(e.id, m); }
+
+    // dawn. Whatever it was doing, it is not doing it in daylight.
+    if (!isNight()) { vanish(e); continue; }
 
     const near = ps.filter(p => dist(p.location, e.location) < 90);
     if (!near.length) { vanish(e); continue; }
@@ -547,8 +553,9 @@ system.runInterval(() => {
     const night = isNight();
     const here = watchers().length;
 
-    if (d >= 3 && !raidDone && prop("wt_raid", false) !== true) theRaid();
-    else if (d >= 3) raidDone = true;
+    // day three's raid waits for nightfall, because nothing happens in daylight
+    if (d >= 3 && night && !raidDone && prop("wt_raid", false) !== true) theRaid();
+    else if (d >= 3 && prop("wt_raid", false) === true) raidDone = true;
 
     for (const p of players()) {
       // the forest: fog, webs, and it is worse in here
@@ -559,23 +566,25 @@ system.runInterval(() => {
       findVillage(p);
       const village = !!villageAt(p.location);
 
-      // a minute in either place and something turns up
+      // A minute in either place and something turns up — but only after dark.
+      // Nothing of theirs happens in daylight, so the clock only runs at night.
       const key = p.id;
-      spruceUntil.set(key, spruce ? (spruceUntil.get(key) ?? 0) + 1 : 0);
-      villageUntil.set(key, village ? (villageUntil.get(key) ?? 0) + 1 : 0);
+      spruceUntil.set(key, (night && spruce) ? (spruceUntil.get(key) ?? 0) + 1 : 0);
+      villageUntil.set(key, (night && village) ? (villageUntil.get(key) ?? 0) + 1 : 0);
       const dwelt = Math.max(spruceUntil.get(key), villageUntil.get(key));
-      if (dwelt >= 60 && here < MOST_AT_ONCE) {
+      const how = d >= 3 ? "hunt" : "watch";
+
+      if (night && dwelt >= 60 && here < MOST_AT_ONCE) {
         spruceUntil.set(key, 0);
         villageUntil.set(key, 0);
-        const how = (d >= 3 && night) ? "hunt" : "watch";
         spawnWatcher(p, how);
         if (Math.random() < 0.5) spawnWatcher(p, how);
       }
 
-      // and otherwise, now and then, one comes to watch
-      const chance = (spruce ? 0.10 : 0.02) * (d >= 6 ? 2.2 : 1) * (night ? 1.6 : 1);
-      if (here < MOST_AT_ONCE && Math.random() < chance) {
-        spawnWatcher(p, (d >= 3 && night) ? "hunt" : "watch");
+      // and otherwise, now and then through the night, one comes to watch
+      const chance = (spruce ? 0.14 : 0.03) * (d >= 6 ? 2.2 : 1);
+      if (night && here < MOST_AT_ONCE && Math.random() < chance) {
+        spawnWatcher(p, how);
       }
 
       maybeBuild(p);

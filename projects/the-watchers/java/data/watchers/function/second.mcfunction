@@ -6,12 +6,12 @@ execute if score #tongue wt_n matches 1.. run scoreboard players remove #tongue 
 # how many of them are about
 execute store result score #here wt_n if entity @e[tag=wt_creature]
 
-# they turn up beside you and watch. More of them in the old spruce forests,
-# more of them at night, and more again from day 6.
-execute as @a at @s if score #here wt_n matches ..2 run function watchers:creature/maybe
+# They only ever turn up after dark, and never in daylight. More of them in
+# the old spruce forests, and more again from day 6.
+execute if score #time wt_day matches 13000..22800 as @a at @s if score #here wt_n matches ..2 run function watchers:creature/maybe
 
-# day 3: they stop watching
-execute if score #day wt_day matches 3.. if score #raid wt_n matches ..0 run function watchers:day/raid
+# day 3: they stop watching. The raid waits for nightfall.
+execute if score #day wt_day matches 3.. if score #time wt_day matches 13000..22800 if score #raid wt_n matches ..0 run function watchers:day/raid
 
 # day 4: what is left of the animals comes for you
 execute if score #day wt_day matches 4.. run function watchers:mobs/thin
