@@ -1,0 +1,19 @@
+{
+  "format_version": "1.10.0",
+  "minecraft:client_entity": {
+    "description": {
+      "identifier": "watchers:turned",
+      "materials": { "default": "entity_alphatest" },
+      "textures": { "default": "textures/entity/turned" },
+      "geometry": { "default": "geometry.turned" },
+      "render_controllers": ["controller.render.turned"],
+      "animations": {
+        "walk": "animation.turned.walk",
+        "stretch": "animation.turned.stretch",
+        "look": "animation.turned.look"
+      },
+      "scripts": { "animate": ["walk", "stretch", "look"] },
+      "spawn_egg": { "base_color": "#6b6257", "overlay_color": "#000000" }
+    }
+  }
+}

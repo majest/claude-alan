@@ -1,0 +1,36 @@
+{
+  "format_version": "1.8.0",
+  "animations": {
+    "animation.turned.walk": {
+      "loop": true,
+      "bones": {
+        "leg_fl": { "rotation": ["math.cos(query.modified_distance_moved * 38) * 34", 0, 0] },
+        "leg_br": { "rotation": ["math.cos(query.modified_distance_moved * 38) * 34", 0, 0] },
+        "leg_fr": { "rotation": ["-math.cos(query.modified_distance_moved * 38) * 34", 0, 0] },
+        "leg_bl": { "rotation": ["-math.cos(query.modified_distance_moved * 38) * 34", 0, 0] }
+      }
+    },
+
+    "animation.turned.stretch": {
+      "loop": true,
+      "bones": {
+        "leg_fl": { "scale": [1, "1 + query.modified_move_speed * 2.4", 1] },
+        "leg_fr": { "scale": [1, "1 + query.modified_move_speed * 2.4", 1] },
+        "leg_bl": { "scale": [1, "1 + query.modified_move_speed * 2.1", 1] },
+        "leg_br": { "scale": [1, "1 + query.modified_move_speed * 2.1", 1] },
+        "body": {
+          "position": [0, "query.modified_move_speed * 13", 0],
+          "rotation": ["-query.modified_move_speed * 9", 0, 0]
+        },
+        "head": { "rotation": ["query.modified_move_speed * 14", 0, 0] }
+      }
+    },
+
+    "animation.turned.look": {
+      "loop": true,
+      "bones": {
+        "head": { "rotation": ["query.target_x_rotation", "query.target_y_rotation", 0] }
+      }
+    }
+  }
+}

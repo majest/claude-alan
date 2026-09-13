@@ -1,0 +1,6 @@
+# A cow has no idea how to attack you, and a data pack cannot teach it. So it
+# gets shoved towards you a little at a time instead, and bites when it
+# arrives. The block check stops them walking through walls.
+scoreboard players remove @s wt_hold 1
+execute facing entity @p[distance=..28] feet rotated ~ 0 positioned ^ ^ ^0.17 if block ~ ~ ~ #watchers:see_through run tp @s ~ ~ ~
+execute if entity @p[distance=..1.8] if score @s wt_hold matches ..0 run function watchers:mobs/bite

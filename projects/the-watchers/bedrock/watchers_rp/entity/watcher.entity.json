@@ -1,0 +1,19 @@
+{
+  "format_version": "1.10.0",
+  "minecraft:client_entity": {
+    "description": {
+      "identifier": "watchers:watcher",
+      "materials": { "default": "entity_alphatest" },
+      "textures": { "default": "textures/entity/watcher" },
+      "geometry": { "default": "geometry.watcher" },
+      "render_controllers": ["controller.render.watcher"],
+      "animations": {
+        "walk": "animation.watcher.walk",
+        "twitch": "animation.watcher.twitch",
+        "look": "animation.watcher.look"
+      },
+      "scripts": { "animate": ["walk", "twitch", "look"] },
+      "spawn_egg": { "base_color": "#0b0b0b", "overlay_color": "#e8e3d8" }
+    }
+  }
+}
