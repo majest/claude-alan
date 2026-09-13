@@ -142,6 +142,27 @@ if os.path.isdir(BED):
             if not os.path.exists(script):
                 bed.append("the manifest points at %s, which is not there" % entry[0]["entry"])
 
+    # Minecraft renumbered itself in 2026: what the launcher calls 26.45 is
+    # engine 1.26.45, the leading 1 simply dropped. Two numbers went stale with
+    # it and stopped the add-on installing at all, so they are checked here.
+    # Both were looked up on 13 September 2026; if they rot, look them up again
+    # rather than guessing.
+    if bp:
+        for d in bp.get("dependencies", []):
+            if d.get("module_name") == "@minecraft/server":
+                major = str(d.get("version", "")).split(".")[0]
+                if major == "1":
+                    bed.append("the script asks for @minecraft/server 1.x, and that "
+                               "line ended at 1.19.0 — the game is on 2.x now")
+        mev = bp["header"].get("min_engine_version", [0, 0, 0])
+        if mev[0] == 1 and mev[1] < 25:
+            bed.append("min_engine_version is %s, which is more than one version "
+                       "behind the engine (1.26.x) and may be refused" % mev)
+        if mev[0] > 1:
+            bed.append("min_engine_version is %s — the engine still reports major "
+                       "version 1, so this should be [1, 26, 0], not the number "
+                       "the launcher shows" % mev)
+
     if ent and cli:
         a = ent["minecraft:entity"]["description"]["identifier"]
         b = cli["minecraft:client_entity"]["description"]["identifier"]

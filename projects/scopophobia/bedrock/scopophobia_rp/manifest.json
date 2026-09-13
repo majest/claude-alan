@@ -4,14 +4,26 @@
     "name": "Scopophobia",
     "description": "What the creature looks like. Needed, or it is invisible.",
     "uuid": "115b16a2-8984-49d4-929a-7731b2382060",
-    "version": [1, 0, 0],
-    "min_engine_version": [1, 21, 0]
+    "version": [
+      1,
+      0,
+      0
+    ],
+    "min_engine_version": [
+      1,
+      26,
+      0
+    ]
   },
   "modules": [
     {
       "type": "resources",
       "uuid": "da8ba11d-33fe-469a-b164-5547466e56d0",
-      "version": [1, 0, 0]
+      "version": [
+        1,
+        0,
+        0
+      ]
     }
   ]
 }

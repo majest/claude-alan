@@ -1,7 +1,11 @@
 {
   "pack": {
+    "description": "§4Scopophobia§r — day 2 it comes, day 3 they turn, day 5 it goes quiet",
+
+    "min_format": 48,
+    "max_format": 999,
+
     "pack_format": 61,
-    "supported_formats": { "min_inclusive": 48, "max_inclusive": 99 },
-    "description": "§4Scopophobia§r — day 2 it comes, day 3 they turn, day 5 it goes quiet"
+    "supported_formats": { "min_inclusive": 48, "max_inclusive": 999 }
   }
 }

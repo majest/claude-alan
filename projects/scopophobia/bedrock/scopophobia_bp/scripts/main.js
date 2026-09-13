@@ -509,6 +509,11 @@ system.runInterval(() => {
   try { chaseTurned(); } catch {}
 }, 4);
 
-world.afterEvents.worldInitialize?.subscribe(() => {
-  say("§4§lScopophobia§r§7§o is loaded. Nothing happens until day 2.");
-});
+// The event that fires when a world opens was renamed from worldInitialize to
+// worldLoad when the scripting API went from version 1 to version 2. Both
+// names are tried so the pack works either side of that change.
+const greet = () => say("§4§lScopophobia§r§7§o is loaded. Nothing happens until day 2.");
+try {
+  if (world.afterEvents.worldLoad) world.afterEvents.worldLoad.subscribe(greet);
+  else if (world.afterEvents.worldInitialize) world.afterEvents.worldInitialize.subscribe(greet);
+} catch {}

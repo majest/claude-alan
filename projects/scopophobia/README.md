@@ -95,6 +95,23 @@ time, moves the creature's body, and hands everything else to `second.mcfunction
 stepping down one block at a time until it finds something solid, and it is how
 the creature, the extra mobs, the bunkers and the trees all find the ground.
 
+## Version numbers, and the trap in them
+
+Minecraft renumbered itself in 2026. What the launcher calls **26.45** is engine
+**1.26.45** — the leading `1` was simply dropped. Three numbers went stale when
+that happened, and two of them stopped the Bedrock add-on installing at all.
+
+| Where | Was | Now | Why |
+| --- | --- | --- | --- |
+| `scopophobia_bp/manifest.json` | `@minecraft/server` `1.11.0` | `2.9.0` | The `1.x` line ended at `1.19.0`. Asking for a version that no longer exists is enough on its own to stop a pack installing. |
+| both Bedrock manifests | `min_engine_version [1, 21, 0]` | `[1, 26, 0]` | Packs more than one minor version behind the engine are treated as out of date. Note it is still `[1, 26, 0]` and not `[26, 45, 0]` — the engine kept its leading 1. |
+| `java/pack.mcmeta` | `pack_format` only | also `min_format` / `max_format` | Java changed the shape of this file in 25w31a. The old fields are still there for older games. |
+| `scripts/main.js` | `worldInitialize` | `worldLoad` | Renamed when the scripting API went from 1 to 2. Both are tried. |
+
+`tools/check.py` now catches the first two, so it cannot happen quietly again.
+All of it was looked up on 13 September 2026; if it rots, look it up again
+rather than guessing.
+
 ## Still to decide
 
 - **Black eyes** need a texture pack built on Minecraft's own pictures of a cow
