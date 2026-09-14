@@ -1,17 +1,17 @@
 # How projects work here
 
-The rules for building anything in `claude-alan/` or `claude-adam/`. They are
-the same for both — only the way you explain them differs, and that is in each
-child's own `CLAUDE.md`.
+The rules for building anything in `claude-alan/`, `claude-adam/` or
+`claude-artur/`. They are the same in all three — only the way you talk to the
+person differs, and that is in each repo's own `CLAUDE.md`.
 
-**This file is duplicated in both children's repos on purpose.** Sessions often
+**This file is duplicated across all three repos on purpose.** Sessions often
 run on a clone of one repo alone, with nothing else around it, so each repo has
-to carry its own rules. If you change this file, change it in the other repo
-too — or it stops being the same rule.
+to carry its own rules. If you change this file, change it in the others too —
+or it stops being the same rule.
 
-Written plainly so either child can read it. When talking to a child, use their
-own level rather than reading it out — Adam is 8, Alan is 12, and their
-`CLAUDE.md` files say what that means.
+Written plainly. Adam is 8, Alan is 12, Artur is the grown-up; each repo's
+`CLAUDE.md` says how to pitch things for that person. Use their level rather
+than reading this out.
 
 ---
 
@@ -28,7 +28,7 @@ Ask when any of these is true:
 
 - More than one project could plausibly be meant.
 - Two projects have similar names or cover similar ground.
-- The child hasn't named one in this conversation.
+- They haven't named one in this conversation.
 - It isn't clear whether they want a new project or a change to an existing one.
 
 Editing the wrong project quietly breaks something that worked, which is worse
@@ -133,8 +133,8 @@ git push
 
 **Every time.** The push is what publishes. There is no separate deploy step,
 but nothing reaches the website until the commit is on `main`. Work sitting
-uncommitted is invisible to the site, and the child will load their page, see
-the old version, and reasonably conclude it is broken.
+uncommitted is invisible to the site: they will load their page, see the old
+version, and reasonably conclude it is broken.
 
 If they ask for three things, push after each one. Small commits are easier to
 undo when one turns out wrong.
@@ -148,7 +148,7 @@ leaving it uncommitted, so they know it is waiting rather than lost.
 
 1. Scans `projects/` for folders containing a `project.json`.
 2. Copies each project to this repo's own GitHub Pages site.
-3. Generates the child's index page and a `projects.json` listing.
+3. Generates that person's index page and a `projects.json` listing.
 4. The main showcase reads that listing and shows the new project.
 
 Each repo publishes **itself**, with its own credentials, so nothing here has
@@ -156,8 +156,9 @@ write access to anything else. That is deliberate: there is no token in this
 repo to leak.
 
 **Don't edit `.github/`.** If publishing breaks, say so and write it into the
-project's `README.md` under *Still to decide* — it needs Artur, and he is not
-in the session. Don't try to fix it, and don't wait for him.
+project's `README.md` under *Still to decide* — it needs Artur. In a child's
+repo he is not in the session, so don't wait for him; in his own repo, just
+tell him.
 
 ---
 
@@ -169,7 +170,7 @@ cutting a person out of the camera, and heavier text and image models. Each
 entry has a measured size, a measured load time, and code to copy.
 
 **Look there first.** It covers most of what gets asked for, needs no server,
-no key and no cost, and works for everyone the child shows it to.
+no key and no cost, and works for everyone they show it to.
 
 **Everything in `AI-TOOLBOX.md` works anywhere**, because it runs in the
 player's browser. Use it by default.
@@ -234,9 +235,8 @@ when the pictures are missing is wrong** — the pictures are a bonus, not a
 dependency.
 
 The request can be written from anywhere. Running it needs Artur's own
-computer, since the machine is on the home network. Tell the child their
-request is saved and will be made next time it runs, rather than implying it
-is happening now.
+computer, since the machine is on the home network. Say the request is saved
+and will be made next time it runs, rather than implying it is happening now.
 
 ---
 
@@ -299,8 +299,7 @@ later does not remove it from history.
   descriptions.
 - No school, address, town, birthday or age.
 - No email addresses, no phone numbers.
-- No photographs of the children or anyone they know. Drawn or generated
-  images are fine.
+- No photographs of anyone. Drawn or generated images are fine.
 - No passwords, API keys or tokens. Nothing that looks like a secret.
 - Nothing about the machines at home — no addresses, usernames or setup
   details.
@@ -311,7 +310,7 @@ If an idea needs any of those, it needs a different idea. Say so.
 
 ## Checklist before finishing
 
-- [ ] It went into the project the child actually asked about
+- [ ] It went into the project that was actually asked about
 - [ ] Folder is `projects/<lowercase-hyphen-name>/`
 - [ ] `index.html` starts with `<!doctype html>` and `<meta charset="utf-8">`
 - [ ] All the code is in that one file, and it runs when opened directly
@@ -319,4 +318,4 @@ If an idea needs any of those, it needs a different idea. Say so.
 - [ ] The description is two plain sentences
 - [ ] It works in a narrow, phone-sized window
 - [ ] Nothing from the "must never" list is anywhere in it
-- [ ] Committed **and pushed** — or the child has been told it is waiting
+- [ ] Committed **and pushed** — or they have been told it is waiting

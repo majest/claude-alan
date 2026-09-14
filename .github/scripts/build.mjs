@@ -206,7 +206,7 @@ function page(list){
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%9C%A8%3C/text%3E%3C/svg%3E">
 <style>
 :root{
-  --pink:#FF48B0; --blue:#0078BF; --green:#00A95C; --yellow:#FFC800;
+  --pink:#FF48B0; --blue:#0078BF; --green:#00A95C; --yellow:#FFC800; --orange:#FF6C2F;
   --paper:#FBF3E4; --ink:#241D18; --ink-2:#6B5D50; --ink-3:#9C8B7A;
   --rule:#DCCDB2; --card:#FFFBF2; --shadow:rgba(36,29,24,.20);
   --blend:multiply; --grain:.28; --halftone:.10; --blob-alpha:.34;
