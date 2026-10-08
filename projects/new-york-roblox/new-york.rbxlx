@@ -1,0 +1,1016 @@
+<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
+  <Meta name="ExplicitAutoJoints">true</Meta>
+  <External>null</External>
+  <External>nil</External>
+  <Item class="Workspace" referent="RBX_Workspace">
+    <Properties><string name="Name">Workspace</string></Properties>
+  </Item>
+  <Item class="ServerScriptService" referent="RBX_SSS">
+    <Properties><string name="Name">ServerScriptService</string></Properties>
+    <Item class="Script" referent="RBX_Server0">
+      <Properties>
+        <string name="Name">BuildNewYork</string>
+        <ProtectedString name="Source"><![CDATA[--[[
+BuildNewYork
+A Script. It goes in ServerScriptService.
+
+When the game starts this builds Manhattan from nothing: the island, the
+street grid, the neighbourhoods and their buildings, Central Park, a dozen
+landmarks, the rivers, the other boroughs and New Jersey, a glowing border
+round the whole city, and hills and forest beyond the border so the world
+does not just stop at the edge.
+
+Nothing is placed by hand. Everything comes from the tables near the top:
+change a number there and the city changes. The shoreline is a list of
+points, each neighbourhood is a line, each landmark is a small function.
+
+Which way is which:
+  north (uptown)   is -Z
+  south (downtown) is +Z
+  east             is -X     (1st Avenue is in the east)
+  west             is +X     (12th Avenue is in the west)
+Positions are in "avenue units" (a) and "street numbers" (s). 5th Avenue is
+a = 7, 34th Street is s = 34. The two functions xOf and zOf turn those into
+studs. Below Houston Street the street numbers go negative, down to -26 at
+the Battery, because the real streets there have names, not numbers.
+]]
+
+local Lighting = game:GetService("Lighting")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Terrain = workspace.Terrain
+
+-- ---------------------------------------------------------------------------
+-- Knobs. Change these first.
+-- ---------------------------------------------------------------------------
+
+local CONFIG = {
+	SEED = 2026,              -- same seed, same city. Change it for a different one.
+	AVENUE_SPACING = 70,      -- studs from one avenue to the next (east-west)
+	STREET_SPACING = 54,      -- studs from one street to the next. One game street = two real streets.
+	AVENUE_WIDTH = 16,        -- how wide the avenues are
+	STREET_WIDTH = 10,        -- how wide the cross streets are
+	HEIGHT_PER_FLOOR = 4,     -- studs per floor. A real floor is nearer 3, but towers should feel tall.
+	BUILDINGS_PER_BLOCK = 3,  -- at most this many buildings in one block
+	EMPTY_LOT_CHANCE = 0.08,  -- some lots are left empty, like a real city
+	PARK_TREES_PER_BLOCK = 4,
+	BORDER_SOLID = true,      -- true: the glowing border stops you. false: you can walk out into the hills.
+	BORDER_HEIGHT = 120,
+	BEYOND = 1500,            -- studs of hills and forest past the border. Bigger takes longer to build.
+	HILLS = 80,
+	FOREST_TREES = 600,
+	PARTS_PER_BREATH = 400,   -- pause for a frame after this many parts, so the server stays responsive
+}
+
+-- ---------------------------------------------------------------------------
+-- The map, as numbers.
+-- ---------------------------------------------------------------------------
+
+-- The shoreline. For each street number, the east edge and the west edge of
+-- the island, in avenue units. Between two rows it is a straight line.
+local SHORE = {
+	{ s = -26, e = 7.5, w = 7.5 },   -- the Battery, the southern tip
+	{ s = -15, e = 4.5, w = 10.5 },  -- Wall Street
+	{ s = -5,  e = 2,   w = 13 },
+	{ s = 0,   e = 1,   w = 14.5 },  -- Houston Street
+	{ s = 14,  e = 0,   w = 15 },    -- 14th Street, full width
+	{ s = 59,  e = 0,   w = 15 },
+	{ s = 70,  e = 0.5, w = 14.5 },
+	{ s = 96,  e = 0.8, w = 14 },
+	{ s = 110, e = 2.5, w = 13.8 },  -- the East River bends west
+	{ s = 125, e = 4.5, w = 13.5 },
+	{ s = 145, e = 5.5, w = 13 },
+	{ s = 160, e = 6.5, w = 12.5 },
+	{ s = 180, e = 7,   w = 12 },    -- Washington Heights
+	{ s = 200, e = 7.5, w = 11.5 },
+	{ s = 215, e = 8,   w = 10.5 },
+	{ s = 221, e = 9.5, w = 9.5 },   -- Inwood, the northern tip
+}
+
+-- The neighbourhoods. The first line that matches wins, so the small
+-- special places come before the big bands. s1/s2 are street numbers,
+-- a1/a2 are avenue units (leave them out for the whole width).
+-- floors = {lowest, highest}. palette = the colours and materials.
+local ZONES = {
+	{ name = "Battery Park",           s1 = -26, s2 = -22, park = true },
+	{ name = "Washington Square Park", s1 = 4,   s2 = 6,   a1 = 6, a2 = 8, park = true },
+	{ name = "Times Square",           s1 = 40,  s2 = 48,  a1 = 8, a2 = 10, floors = { 25, 50 }, palette = "glass", neon = true },
+	{ name = "Central Park",           s1 = 59,  s2 = 110, a1 = 7, a2 = 10, park = true },
+	{ name = "Inwood Hill Park",       s1 = 205, s2 = 221, park = true },
+	{ name = "Financial District",     s1 = -26, s2 = -12, floors = { 15, 70 }, palette = "glass" },
+	{ name = "Tribeca & SoHo",         s1 = -12, s2 = 0,   floors = { 4, 10 },  palette = "brick" },
+	{ name = "The Village",            s1 = 0,   s2 = 14,  floors = { 3, 7 },   palette = "brick" },
+	{ name = "Chelsea & Flatiron",     s1 = 14,  s2 = 34,  floors = { 6, 20 },  palette = "stone" },
+	{ name = "Midtown",                s1 = 34,  s2 = 59,  floors = { 20, 75 }, palette = "glass" },
+	{ name = "Upper East Side",        s1 = 59,  s2 = 96,  a2 = 7,  floors = { 8, 30 }, palette = "stone" },
+	{ name = "Upper West Side",        s1 = 59,  s2 = 96,  a1 = 10, floors = { 8, 30 }, palette = "stone" },
+	{ name = "Harlem",                 s1 = 96,  s2 = 125, floors = { 4, 12 },  palette = "brick" },
+	{ name = "Washington Heights",     s1 = 125, s2 = 180, floors = { 4, 10 },  palette = "brick" },
+	{ name = "Inwood",                 s1 = 180, s2 = 221, floors = { 3, 6 },   palette = "brick" },
+}
+
+-- Everything across the water. These are rectangles, filled with a looser
+-- grid of lower buildings and some trees.
+local BOROUGHS = {
+	{ name = "Brooklyn",      a1 = -12, a2 = -4, s1 = -60,  s2 = 45,  floors = { 2, 8 }, palette = "brick" },
+	{ name = "Queens",        a1 = -12, a2 = -4, s1 = 45,   s2 = 130, floors = { 2, 7 }, palette = "brick" },
+	{ name = "The Bronx",     a1 = -12, a2 = -4, s1 = 130,  s2 = 260, floors = { 3, 9 }, palette = "brick" },
+	{ name = "The Bronx",     a1 = -4,  a2 = 18, s1 = 226,  s2 = 260, floors = { 3, 9 }, palette = "brick" },
+	{ name = "New Jersey",    a1 = 19,  a2 = 28, s1 = -45,  s2 = 260, floors = { 2, 6 }, palette = "stone" },
+	{ name = "Staten Island", a1 = 12,  a2 = 28, s1 = -110, s2 = -60, floors = { 1, 4 }, palette = "stone" },
+}
+
+-- The taller clusters inside the boroughs.
+local SKYLINES = {
+	{ name = "Downtown Brooklyn", a1 = -8, a2 = -4, s1 = -25, s2 = -5, floors = { 15, 35 }, palette = "glass" },
+	{ name = "Long Island City",  a1 = -7, a2 = -4, s1 = 45,  s2 = 62, floors = { 18, 40 }, palette = "glass" },
+	{ name = "Jersey City",       a1 = 19, a2 = 22, s1 = -15, s2 = 12, floors = { 20, 45 }, palette = "glass" },
+}
+
+-- The border goes round all of that, with a bit of room.
+local BORDER_A = { a1 = -13, a2 = 29, s1 = -115, s2 = 265 }
+
+-- Avenue names, east to west. Avenue unit 1 is 1st Avenue.
+local AVENUE_NAMES = {
+	"1st Ave", "2nd Ave", "3rd Ave", "Lexington Ave", "Park Ave", "Madison Ave",
+	"5th Ave", "6th Ave", "7th Ave", "8th Ave", "9th Ave", "10th Ave", "11th Ave", "12th Ave",
+}
+
+-- ---------------------------------------------------------------------------
+-- Colours and materials.
+-- ---------------------------------------------------------------------------
+
+local PALETTES = {
+	glass = {
+		materials = { Enum.Material.Glass, Enum.Material.SmoothPlastic, Enum.Material.Metal },
+		colours = {
+			Color3.fromRGB(120, 160, 190), Color3.fromRGB(90, 110, 140),
+			Color3.fromRGB(170, 190, 205), Color3.fromRGB(60, 80, 100),
+			Color3.fromRGB(140, 170, 180),
+		},
+	},
+	brick = {
+		materials = { Enum.Material.Brick, Enum.Material.Brick, Enum.Material.Concrete },
+		colours = {
+			Color3.fromRGB(150, 70, 50), Color3.fromRGB(120, 60, 45),
+			Color3.fromRGB(190, 140, 100), Color3.fromRGB(100, 55, 40),
+			Color3.fromRGB(170, 110, 80),
+		},
+	},
+	stone = {
+		materials = { Enum.Material.Concrete, Enum.Material.Slate, Enum.Material.Limestone },
+		colours = {
+			Color3.fromRGB(205, 190, 160), Color3.fromRGB(170, 165, 155),
+			Color3.fromRGB(225, 215, 190), Color3.fromRGB(140, 135, 125),
+		},
+	},
+}
+
+local NEON = {
+	Color3.fromRGB(255, 60, 90), Color3.fromRGB(60, 200, 255), Color3.fromRGB(255, 220, 60),
+	Color3.fromRGB(120, 255, 120), Color3.fromRGB(255, 120, 255), Color3.fromRGB(255, 140, 40),
+}
+local LEAF = {
+	Color3.fromRGB(70, 130, 60), Color3.fromRGB(55, 110, 50),
+	Color3.fromRGB(95, 150, 70), Color3.fromRGB(150, 110, 40),
+}
+local PAVEMENT = Color3.fromRGB(190, 188, 180)
+local LIMESTONE = Color3.fromRGB(215, 205, 180)
+local STEEL = Color3.fromRGB(200, 205, 210)
+local STONE = Color3.fromRGB(150, 140, 125)
+local ROAD = Color3.fromRGB(60, 60, 62)
+local TRUNK = Color3.fromRGB(100, 70, 45)
+
+-- ---------------------------------------------------------------------------
+-- Geometry helpers.
+-- ---------------------------------------------------------------------------
+
+local AVE = CONFIG.AVENUE_SPACING
+local SU = CONFIG.STREET_SPACING / 2     -- studs per real street number
+local W = AVE - CONFIG.AVENUE_WIDTH      -- a block's width, east-west
+local D = CONFIG.STREET_SPACING - CONFIG.STREET_WIDTH   -- a block's depth, north-south
+
+local function xOf(a) return a * AVE end
+local function zOf(s) return -s * SU end
+
+-- The shoreline at any street number, by sliding between the rows above.
+local function shoreAt(s)
+	if s <= SHORE[1].s then return SHORE[1].e, SHORE[1].w end
+	for i = 2, #SHORE do
+		local p, q = SHORE[i - 1], SHORE[i]
+		if s <= q.s then
+			local t = (s - p.s) / (q.s - p.s)
+			return p.e + (q.e - p.e) * t, p.w + (q.w - p.w) * t
+		end
+	end
+	local last = SHORE[#SHORE]
+	return last.e, last.w
+end
+
+local function onIsland(a, s)
+	if s < SHORE[1].s or s > SHORE[#SHORE].s then return false end
+	local e, w = shoreAt(s)
+	return a >= e and a <= w
+end
+
+local function inRect(zone, a, s)
+	return s >= zone.s1 and s < zone.s2
+		and (zone.a1 == nil or a >= zone.a1)
+		and (zone.a2 == nil or a < zone.a2)
+end
+
+local function zoneAt(a, s)
+	for _, zone in ipairs(ZONES) do
+		if inRect(zone, a, s) then return zone end
+	end
+	return ZONES[#ZONES]
+end
+
+local function skylineAt(a, s)
+	for _, zone in ipairs(SKYLINES) do
+		if inRect(zone, a, s) then return zone end
+	end
+	return nil
+end
+
+-- Rectangles in studs. z1 is always the smaller (more northern) value.
+local function rectOf(r)
+	return { x1 = xOf(r.a1), x2 = xOf(r.a2), z1 = zOf(r.s2), z2 = zOf(r.s1) }
+end
+local BORDER = rectOf(BORDER_A)
+local WORLD = {
+	x1 = BORDER.x1 - CONFIG.BEYOND, x2 = BORDER.x2 + CONFIG.BEYOND,
+	z1 = BORDER.z1 - CONFIG.BEYOND, z2 = BORDER.z2 + CONFIG.BEYOND,
+}
+
+-- ---------------------------------------------------------------------------
+-- Making things.
+-- ---------------------------------------------------------------------------
+
+local rng = Random.new(CONFIG.SEED)
+local function pick(list) return list[rng:NextInteger(1, #list)] end
+
+local root = Instance.new("Folder")
+root.Name = "NewYork"
+root.Parent = workspace
+
+local function folder(name)
+	local f = Instance.new("Folder")
+	f.Name = name
+	f.Parent = root
+	return f
+end
+local F = {
+	ground = folder("Ground"), buildings = folder("Buildings"), parks = folder("Parks"),
+	landmarks = folder("Landmarks"), boroughs = folder("Boroughs"), bridges = folder("Bridges"),
+	beyond = folder("Beyond"), border = folder("Border"),
+}
+
+local made = 0
+local function breathe()
+	made = made + 1
+	if made % CONFIG.PARTS_PER_BREATH == 0 then task.wait() end
+end
+
+local function part(class, size, cf, colour, material, parent)
+	local p = Instance.new(class)
+	p.Anchored = true
+	p.Size = size
+	p.CFrame = cf
+	p.Color = colour
+	p.Material = material
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	p.Parent = parent
+	breathe()
+	return p
+end
+
+local function box(size, cf, colour, material, parent)
+	return part("Part", size, cf, colour, material, parent)
+end
+
+-- A cylinder standing on its end. Roblox cylinders lie along X, so it is
+-- turned a quarter turn to stand it up.
+local function cylinder(height, diameter, position, colour, material, parent)
+	local p = part("Part", Vector3.new(height, diameter, diameter),
+		CFrame.new(position) * CFrame.Angles(0, 0, math.rad(90)), colour, material, parent)
+	p.Shape = Enum.PartType.Cylinder
+	return p
+end
+
+local function ball(diameter, position, colour, material, parent)
+	local p = part("Part", Vector3.new(diameter, diameter, diameter), CFrame.new(position), colour, material, parent)
+	p.Shape = Enum.PartType.Ball
+	return p
+end
+
+-- A straight bar from one point to another. Used for bridge cables.
+local function beam(from, to, thickness, colour, material, parent)
+	local length = (to - from).Magnitude
+	return box(Vector3.new(thickness, thickness, length), CFrame.lookAt((from + to) / 2, to), colour, material, parent)
+end
+
+-- A wall along the x or z axis, split into pieces because a part can be at
+-- most 2048 studs long.
+local function wall(x1, x2, z1, z2, y, height, colour, material, transparency, canCollide, parent)
+	local MAX = 2000
+	local nx = math.max(1, math.ceil((x2 - x1) / MAX))
+	local nz = math.max(1, math.ceil((z2 - z1) / MAX))
+	for i = 0, nx - 1 do
+		for j = 0, nz - 1 do
+			local ax, bx = x1 + (x2 - x1) * i / nx, x1 + (x2 - x1) * (i + 1) / nx
+			local az, bz = z1 + (z2 - z1) * j / nz, z1 + (z2 - z1) * (j + 1) / nz
+			local p = box(Vector3.new(math.max(bx - ax, 2), height, math.max(bz - az, 2)),
+				CFrame.new((ax + bx) / 2, y + height / 2, (az + bz) / 2), colour, material, parent)
+			p.Transparency = transparency
+			p.CanCollide = canCollide
+		end
+	end
+end
+
+local function tree(x, y, z, scale, parent)
+	local h = 10 * scale
+	cylinder(h, 2 * scale, Vector3.new(x, y + h / 2, z), TRUNK, Enum.Material.Wood, parent)
+	ball(9 * scale, Vector3.new(x, y + h + 2 * scale, z), pick(LEAF), Enum.Material.Grass, parent)
+end
+
+-- A floating name above something, visible from a long way off.
+local function label(onPart, text, height)
+	local bb = Instance.new("BillboardGui")
+	bb.Size = UDim2.new(0, 260, 0, 44)
+	bb.StudsOffsetWorldSpace = Vector3.new(0, height, 0)
+	bb.AlwaysOnTop = true
+	bb.MaxDistance = 2500
+	local t = Instance.new("TextLabel")
+	t.Size = UDim2.new(1, 0, 1, 0)
+	t.BackgroundTransparency = 1
+	t.Text = text
+	t.TextColor3 = Color3.new(1, 1, 1)
+	t.TextStrokeTransparency = 0.2
+	t.Font = Enum.Font.GothamBold
+	t.TextScaled = true
+	t.Parent = bb
+	bb.Parent = onPart
+end
+
+-- Terrain in a box. Terrain is made of 4-stud voxels, so edges come out a
+-- little blocky; it is still far cheaper than parts for ground and water.
+local function fill(x1, x2, y1, y2, z1, z2, material)
+	Terrain:FillBlock(
+		CFrame.new((x1 + x2) / 2, (y1 + y2) / 2, (z1 + z2) / 2),
+		Vector3.new(x2 - x1, y2 - y1, z2 - z1),
+		material)
+end
+
+-- The same, but in avenue units and street numbers.
+local function fillAS(a1, a2, y1, y2, s1, s2, material)
+	fill(xOf(a1), xOf(a2), y1, y2, zOf(s2), zOf(s1), material)
+end
+
+-- A building. y0 is the ground it stands on.
+local function building(x, y0, z, w, d, floors, palette, parent, neon)
+	local h = floors * CONFIG.HEIGHT_PER_FLOOR
+	local pal = PALETTES[palette]
+	local colour, material = pick(pal.colours), pick(pal.materials)
+	local b = box(Vector3.new(w, h, d), CFrame.new(x, y0 + h / 2, z), colour, material, parent)
+	if floors >= 35 then
+		-- tall ones get a narrower tower on top, like a real skyscraper
+		local h2 = h * rng:NextNumber(0.25, 0.5)
+		box(Vector3.new(w * 0.6, h2, d * 0.6), CFrame.new(x, y0 + h + h2 / 2, z), colour, material, parent)
+	end
+	if neon then
+		-- a glowing sign on the south face
+		box(Vector3.new(w * 0.8, h * 0.25, 1), CFrame.new(x, y0 + h * 0.4, z + d / 2 + 0.5),
+			pick(NEON), Enum.Material.Neon, parent)
+	end
+	return b
+end
+
+-- ---------------------------------------------------------------------------
+-- Places that must stay clear of random buildings.
+-- ---------------------------------------------------------------------------
+
+local reserved = {}      -- island blocks, keyed "a,s"
+local clearRects = {}    -- rectangles in studs, for the boroughs
+
+local function reserve(a, s) reserved[a .. "," .. s] = true end
+local function keepClear(x1, x2, z1, z2) table.insert(clearRects, { x1 = x1, x2 = x2, z1 = z1, z2 = z2 }) end
+local function isClear(x, z)
+	for _, r in ipairs(clearRects) do
+		if x >= r.x1 and x <= r.x2 and z >= r.z1 and z <= r.z2 then return false end
+	end
+	return true
+end
+
+-- ---------------------------------------------------------------------------
+-- The landmarks. Each one reserves the blocks it stands on and then builds
+-- itself at the centre of them. fw and fd are the footprint it has to play
+-- with, in studs.
+-- ---------------------------------------------------------------------------
+
+local function spire(x, yBase, z, height)
+	cylinder(height, 2, Vector3.new(x, yBase + height / 2, z), STEEL, Enum.Material.Metal, F.landmarks)
+	return ball(4, Vector3.new(x, yBase + height, z), Color3.fromRGB(255, 80, 80), Enum.Material.Neon, F.landmarks)
+end
+
+local LANDMARKS = {
+	{ name = "Empire State Building", blocks = { { 7, 34 } },
+		build = function(cx, cz, fw, fd)
+			local f = CONFIG.HEIGHT_PER_FLOOR
+			local y = 1
+			box(Vector3.new(fw, 6 * f, fd), CFrame.new(cx, y + 3 * f, cz), LIMESTONE, Enum.Material.Limestone, F.landmarks)
+			y = y + 6 * f
+			box(Vector3.new(fw * 0.6, 74 * f, fd * 0.6), CFrame.new(cx, y + 37 * f, cz), LIMESTONE, Enum.Material.Limestone, F.landmarks)
+			y = y + 74 * f
+			box(Vector3.new(fw * 0.35, 22 * f, fd * 0.35), CFrame.new(cx, y + 11 * f, cz), LIMESTONE, Enum.Material.Limestone, F.landmarks)
+			y = y + 22 * f
+			label(spire(cx, y, cz, 14 * f), "Empire State Building", 12)
+		end },
+
+	{ name = "Chrysler Building", blocks = { { 4, 42 } },
+		build = function(cx, cz, fw, fd)
+			local f = CONFIG.HEIGHT_PER_FLOOR
+			local w, d = fw * 0.7, fd * 0.85
+			box(Vector3.new(w, 60 * f, d), CFrame.new(cx, 1 + 30 * f, cz), Color3.fromRGB(190, 180, 160), Enum.Material.Concrete, F.landmarks)
+			local y = 1 + 60 * f
+			-- the crown: seven shrinking steps of shiny metal
+			for i = 1, 7 do
+				local k = 1 - i * 0.12
+				box(Vector3.new(w * k, 2.5 * f, d * k), CFrame.new(cx, y + 1.25 * f, cz), STEEL, Enum.Material.Metal, F.landmarks)
+				y = y + 2.5 * f
+			end
+			label(spire(cx, y, cz, 10 * f), "Chrysler Building", 10)
+		end },
+
+	{ name = "One World Trade Center", blocks = { { 12, -14 } },
+		build = function(cx, cz, fw, fd)
+			local f = CONFIG.HEIGHT_PER_FLOOR
+			local tower = box(Vector3.new(fw * 0.75, 104 * f, fd * 0.9), CFrame.new(cx, 1 + 52 * f, cz),
+				Color3.fromRGB(150, 190, 215), Enum.Material.Glass, F.landmarks)
+			tower.Reflectance = 0.2
+			label(spire(cx, 1 + 104 * f, cz, 20 * f), "One World Trade Center", 10)
+		end },
+
+	{ name = "Flatiron Building", blocks = { { 7, 22 } },
+		build = function(cx, cz, fw, fd)
+			-- a wedge turned on its side makes the triangle. The thin edge points north.
+			local h = 22 * CONFIG.HEIGHT_PER_FLOOR
+			local p = part("WedgePart", Vector3.new(h, fw, fd),
+				CFrame.new(cx, 1 + h / 2, cz) * CFrame.Angles(0, 0, math.rad(90)),
+				LIMESTONE, Enum.Material.Limestone, F.landmarks)
+			label(p, "Flatiron Building", h / 2 + 8)
+		end },
+
+	{ name = "Grand Central", blocks = { { 5, 42 } },
+		build = function(cx, cz, fw, fd)
+			local f = CONFIG.HEIGHT_PER_FLOOR
+			local b = box(Vector3.new(fw, 10 * f, fd), CFrame.new(cx, 1 + 5 * f, cz), Color3.fromRGB(210, 195, 165), Enum.Material.Limestone, F.landmarks)
+			-- the clock on the south face: a cylinder turned to face +Z
+			local clock = part("Part", Vector3.new(1, 10, 10),
+				CFrame.new(cx, 1 + 7 * f, cz + fd / 2 + 0.5) * CFrame.Angles(0, math.rad(90), 0),
+				Color3.fromRGB(255, 230, 150), Enum.Material.Neon, F.landmarks)
+			clock.Shape = Enum.PartType.Cylinder
+			label(b, "Grand Central", 10 * f + 8)
+		end },
+
+	{ name = "Madison Square Garden", blocks = { { 9, 32 } },
+		build = function(cx, cz, fw, fd)
+			local h = 12 * CONFIG.HEIGHT_PER_FLOOR
+			local c = cylinder(h, math.min(fw, fd), Vector3.new(cx, 1 + h / 2, cz), Color3.fromRGB(110, 110, 115), Enum.Material.Concrete, F.landmarks)
+			label(c, "Madison Square Garden", h / 2 + 8)
+		end },
+
+	{ name = "Rockefeller Center", blocks = { { 7, 48 }, { 7, 50 } },
+		build = function(cx, cz, fw, fd)
+			local f = CONFIG.HEIGHT_PER_FLOOR
+			-- 30 Rock: a tall thin slab
+			local slab = box(Vector3.new(fw, 70 * f, fd * 0.3), CFrame.new(cx, 1 + 35 * f, cz + fd * 0.1), LIMESTONE, Enum.Material.Limestone, F.landmarks)
+			-- the lower buildings and the plaza in front
+			box(Vector3.new(fw, 8 * f, fd * 0.25), CFrame.new(cx, 1 + 4 * f, cz - fd * 0.3), LIMESTONE, Enum.Material.Limestone, F.landmarks)
+			local sign = box(Vector3.new(fw * 0.8, 6, 1), CFrame.new(cx, 1 + 8 * f + 4, cz - fd * 0.3 + fd * 0.125 + 0.5), Color3.fromRGB(255, 40, 40), Enum.Material.Neon, F.landmarks)
+			label(slab, "Rockefeller Center", 35 * f + 8)
+		end },
+}
+
+-- Ones that do not sit on a block of their own.
+local function buildTimesSquare()
+	local x, z = xOf(9) + CONFIG.AVENUE_WIDTH / 2 + 3, zOf(42) - CONFIG.STREET_WIDTH / 2 - 3
+	cylinder(50, 2, Vector3.new(x, 26, z), STEEL, Enum.Material.Metal, F.landmarks)
+	local b = ball(8, Vector3.new(x, 54, z), Color3.fromRGB(255, 240, 120), Enum.Material.Neon, F.landmarks)
+	label(b, "Times Square", 10)
+end
+
+local function buildWashingtonSquareArch()
+	local ax, az = xOf(7), zOf(5)
+	box(Vector3.new(4, 24, 4), CFrame.new(ax - 7, 13, az), LIMESTONE, Enum.Material.Limestone, F.landmarks)
+	box(Vector3.new(4, 24, 4), CFrame.new(ax + 7, 13, az), LIMESTONE, Enum.Material.Limestone, F.landmarks)
+	local top = box(Vector3.new(18, 6, 4), CFrame.new(ax, 28, az), LIMESTONE, Enum.Material.Limestone, F.landmarks)
+	label(top, "Washington Square Park", 10)
+end
+
+local function buildStatueOfLiberty()
+	local x, z = xOf(16.5), zOf(-62)
+	-- a low round island
+	Terrain:FillBall(Vector3.new(x, -55, z), 60, Enum.Material.Grass)
+	local green = Color3.fromRGB(95, 165, 150)
+	box(Vector3.new(18, 30, 18), CFrame.new(x, 20, z), STONE, Enum.Material.Cobblestone, F.landmarks)
+	cylinder(30, 9, Vector3.new(x, 50, z), green, Enum.Material.Metal, F.landmarks)
+	local head = ball(7, Vector3.new(x, 68, z), green, Enum.Material.Metal, F.landmarks)
+	-- the crown: seven spikes
+	for i = 0, 6 do
+		local ang = math.rad(-120 + i * 40)
+		local dx, dy = math.sin(ang) * 5, math.cos(ang) * 5
+		beam(Vector3.new(x + dx * 0.6, 68 + dy * 0.6, z), Vector3.new(x + dx, 68 + dy, z), 0.8, green, Enum.Material.Metal, F.landmarks)
+	end
+	-- the arm and the torch
+	beam(Vector3.new(x + 4, 60, z), Vector3.new(x + 10, 86, z), 3, green, Enum.Material.Metal, F.landmarks)
+	ball(5, Vector3.new(x + 10, 87, z), Color3.fromRGB(255, 200, 80), Enum.Material.Neon, F.landmarks)
+	label(head, "Statue of Liberty", 30)
+end
+
+local function buildRooseveltIsland()
+	fillAS(-1.7, -0.9, -8, 1, 46, 84, Enum.Material.Grass)
+	local f = CONFIG.HEIGHT_PER_FLOOR
+	local first
+	for s = 50, 82, 6 do
+		local b = building(xOf(-1.3), 1, zOf(s), 30, 40, rng:NextInteger(10, 20), "stone", F.landmarks, false)
+		if not first then first = b end
+	end
+	label(first, "Roosevelt Island", 20 * f + 10)
+end
+
+-- A suspension bridge across a river, along street s, from avenue unit
+-- aFrom to aTo. The ramps come down onto whatever is at each end.
+local function suspensionBridge(name, aFrom, aTo, s, deckY, towerH, towers, parent)
+	local z = zOf(s)
+	local x1, x2 = xOf(aFrom), xOf(aTo)
+	local cx = (x1 + x2) / 2
+	local deck = box(Vector3.new(math.abs(x2 - x1), 2, 20), CFrame.new(cx, deckY, z), ROAD, Enum.Material.Asphalt, parent)
+	-- ramps: a tilted box from the ground up to each end of the deck
+	local function ramp(xDeck, direction)
+		local run = 80
+		local xGround = xDeck + run * direction
+		local length = math.sqrt(run * run + deckY * deckY)
+		local angle = math.atan2(deckY, xDeck - xGround)
+		box(Vector3.new(length, 2, 20), CFrame.new((xDeck + xGround) / 2, deckY / 2, z) * CFrame.Angles(0, 0, angle),
+			ROAD, Enum.Material.Asphalt, parent)
+		keepClear(math.min(xDeck, xGround) - 20, math.max(xDeck, xGround) + 20, z - 20, z + 20)
+	end
+	ramp(math.min(x1, x2), -1)
+	ramp(math.max(x1, x2), 1)
+	-- towers, with cables down to the nearest end and the middle of the span
+	local mid = (xOf(towers[1]) + xOf(towers[#towers])) / 2
+	for _, ta in ipairs(towers) do
+		local x = xOf(ta)
+		for _, dz in ipairs({ -9, 9 }) do
+			box(Vector3.new(8, towerH, 6), CFrame.new(x, towerH / 2 - 4, z + dz), STONE, Enum.Material.Cobblestone, parent)
+		end
+		box(Vector3.new(8, 8, 24), CFrame.new(x, towerH - 8, z), STONE, Enum.Material.Cobblestone, parent)
+		local nearEnd = (math.abs(x - x1) < math.abs(x - x2)) and x1 or x2
+		for _, dz in ipairs({ -9, 9 }) do
+			beam(Vector3.new(x, towerH - 4, z + dz), Vector3.new(nearEnd, deckY + 1, z + dz), 1, STEEL, Enum.Material.Metal, parent)
+			if #towers > 1 then
+				beam(Vector3.new(x, towerH - 4, z + dz), Vector3.new(mid, deckY + 12, z + dz), 1, STEEL, Enum.Material.Metal, parent)
+			end
+		end
+	end
+	label(deck, name, towerH + 10)
+end
+
+-- ---------------------------------------------------------------------------
+-- The build, in order. Water first, then land on top of it, then the city.
+-- ---------------------------------------------------------------------------
+
+local function buildWater()
+	Terrain:Clear()
+	fill(WORLD.x1, WORLD.x2, -12, -8, WORLD.z1, WORLD.z2, Enum.Material.Sand)
+	fill(WORLD.x1, WORLD.x2, -8, -4, WORLD.z1, WORLD.z2, Enum.Material.Water)
+end
+
+local function buildBeyond()
+	-- land past the border to the north, east and west. South stays open sea.
+	fill(WORLD.x1, WORLD.x2, -8, 0, WORLD.z1, BORDER.z1, Enum.Material.Grass)
+	fill(WORLD.x1, BORDER.x1, -8, 0, BORDER.z1, BORDER.z2, Enum.Material.Grass)
+	fill(BORDER.x2, WORLD.x2, -8, 0, BORDER.z1, BORDER.z2, Enum.Material.Grass)
+
+	-- a point somewhere on that land, at least `margin` from the border
+	local function landPoint(margin)
+		local side = rng:NextInteger(1, 3)
+		if side == 1 then
+			return rng:NextNumber(WORLD.x1 + margin, WORLD.x2 - margin), rng:NextNumber(WORLD.z1 + margin, BORDER.z1 - margin)
+		elseif side == 2 then
+			return rng:NextNumber(WORLD.x1 + margin, BORDER.x1 - margin), rng:NextNumber(BORDER.z1, BORDER.z2)
+		else
+			return rng:NextNumber(BORDER.x2 + margin, WORLD.x2 - margin), rng:NextNumber(BORDER.z1, BORDER.z2)
+		end
+	end
+
+	-- hills: balls of terrain, mostly sunk, so a dome pokes out
+	for _ = 1, CONFIG.HILLS do
+		local r = rng:NextNumber(60, 220)
+		local x, z = landPoint(r + 20)
+		local material = (r > 170 and rng:NextNumber() < 0.5) and Enum.Material.Rock or Enum.Material.Grass
+		Terrain:FillBall(Vector3.new(x, -r * 0.55, z), r, material)
+	end
+
+	-- a few islands out at sea, so the south has something on the horizon
+	for _ = 1, 3 do
+		local x = rng:NextNumber(BORDER.x1, BORDER.x2)
+		local z = rng:NextNumber(BORDER.z2 + 300, WORLD.z2 - 300)
+		Terrain:FillBall(Vector3.new(x, -90, z), rng:NextNumber(100, 160), Enum.Material.Sand)
+	end
+
+	task.wait()
+
+	-- forest: find the ground under each tree with a ray, so trees sit on hills
+	for _ = 1, CONFIG.FOREST_TREES do
+		local x, z = landPoint(10)
+		local hit = workspace:Raycast(Vector3.new(x, 600, z), Vector3.new(0, -700, 0))
+		if hit and hit.Position.Y > -2 then
+			tree(x, hit.Position.Y - 0.5, z, rng:NextNumber(1.2, 2.6), F.beyond)
+		end
+	end
+end
+
+local function buildBoroughs()
+	for _, b in ipairs(BOROUGHS) do
+		fillAS(b.a1, b.a2, -8, 0, b.s1, b.s2, Enum.Material.Pavement)
+	end
+	for _, b in ipairs(BOROUGHS) do
+		local cellW, cellD = AVE * 1.5, SU * 4
+		local a = b.a1
+		while a < b.a2 - 1 do
+			local s = b.s1
+			while s < b.s2 - 2 do
+				local cx, cz = xOf(a + 0.75), zOf(s + 2)
+				if isClear(cx, cz) then
+					local zone = skylineAt(a + 0.75, s + 2) or b
+					local r = rng:NextNumber()
+					if r < 0.55 then
+						building(cx, 0, cz,
+							(cellW - 24) * rng:NextNumber(0.5, 1), (cellD - 20) * rng:NextNumber(0.5, 1),
+							rng:NextInteger(zone.floors[1], zone.floors[2]), zone.palette, F.boroughs, false)
+					elseif r < 0.75 then
+						tree(cx, 0, cz, rng:NextNumber(1, 2), F.boroughs)
+					end
+				end
+				s = s + 4
+			end
+			a = a + 1.5
+		end
+	end
+end
+
+local function buildIsland()
+	-- the ground: one strip of asphalt per game street, as wide as the island is there
+	for gs = -13, 110 do
+		local s = gs * 2
+		local e, w = shoreAt(s + 1)
+		if w - e > 0.2 then
+			fillAS(e, w, -8, 0, s, s + 2, Enum.Material.Asphalt)
+		end
+	end
+	-- parks are grass, slightly raised
+	for _, zone in ipairs(ZONES) do
+		if zone.park then
+			local e, w = shoreAt((zone.s1 + zone.s2) / 2)
+			fillAS(zone.a1 or e, zone.a2 or w, -8, 1.2, zone.s1, zone.s2, Enum.Material.Grass)
+		end
+	end
+	-- the water in Central Park: dig a hole, then fill it
+	local function lake(a1, a2, s1, s2)
+		fillAS(a1, a2, -8, 2, s1, s2, Enum.Material.Air)
+		fillAS(a1, a2, -8, -1, s1, s2, Enum.Material.Water)
+	end
+	lake(7.7, 9.3, 72, 78)    -- The Lake
+	lake(7.5, 9.5, 86, 96)    -- the Reservoir
+	task.wait()
+end
+
+local function buildBlocks()
+	for _, lm in ipairs(LANDMARKS) do
+		for _, b in ipairs(lm.blocks) do reserve(b[1], b[2]) end
+	end
+	for gs = -13, 110 do
+		local s = gs * 2
+		for a = 0, 14 do
+			if onIsland(a + 0.5, s + 1) then
+				local zone = zoneAt(a + 0.5, s + 1)
+				local cx, cz = xOf(a + 0.5), zOf(s + 1)
+				if zone.park then
+					for _ = 1, CONFIG.PARK_TREES_PER_BLOCK do
+						tree(cx + rng:NextNumber(-W / 2 + 4, W / 2 - 4), 1,
+							cz + rng:NextNumber(-D / 2 + 4, D / 2 - 4), rng:NextNumber(0.8, 1.6), F.parks)
+					end
+				else
+					box(Vector3.new(W, 1, D), CFrame.new(cx, 0.5, cz), PAVEMENT, Enum.Material.Concrete, F.ground)
+					if not reserved[a .. "," .. s] then
+						local n = rng:NextInteger(1, CONFIG.BUILDINGS_PER_BLOCK)
+						local lot = W / n
+						for i = 1, n do
+							if rng:NextNumber() > CONFIG.EMPTY_LOT_CHANCE then
+								building(cx - W / 2 + lot * (i - 0.5), 1, cz,
+									lot - 4, D - 4 - rng:NextNumber(0, 8),
+									rng:NextInteger(zone.floors[1], zone.floors[2]), zone.palette, F.buildings, zone.neon)
+							end
+						end
+					end
+				end
+			end
+		end
+	end
+end
+
+local function buildLandmarks()
+	for _, lm in ipairs(LANDMARKS) do
+		local minA, maxA, minS, maxS = math.huge, -math.huge, math.huge, -math.huge
+		for _, b in ipairs(lm.blocks) do
+			minA, maxA = math.min(minA, b[1]), math.max(maxA, b[1])
+			minS, maxS = math.min(minS, b[2]), math.max(maxS, b[2])
+		end
+		local cx = (xOf(minA + 0.5) + xOf(maxA + 0.5)) / 2
+		local cz = (zOf(minS + 1) + zOf(maxS + 1)) / 2
+		local fw = (maxA - minA) * AVE + W - 4
+		local fd = (maxS - minS) * SU + D - 4
+		lm.build(cx, cz, fw, fd)
+	end
+	buildTimesSquare()
+	buildWashingtonSquareArch()
+	buildStatueOfLiberty()
+	buildRooseveltIsland()
+end
+
+local function buildBridges()
+	-- Brooklyn Bridge: from near City Hall across the East River
+	suspensionBridge("Brooklyn Bridge", 4.6, -4.2, -16, 30, 110, { 2.2, -1.6 }, F.bridges)
+	-- Queensboro Bridge at 60th Street, over Roosevelt Island
+	suspensionBridge("Queensboro Bridge", 0.4, -4.2, 60, 30, 90, { -0.6, -2.6 }, F.bridges)
+	-- George Washington Bridge across the Hudson at 178th
+	suspensionBridge("George Washington Bridge", 12.3, 19.2, 178, 36, 140, { 13.8, 17.8 }, F.bridges)
+end
+
+local function buildBorder()
+	local blue = Color3.fromRGB(90, 200, 255)
+	local h = CONFIG.BORDER_HEIGHT
+	local solid = CONFIG.BORDER_SOLID
+	wall(BORDER.x1, BORDER.x2, BORDER.z1 - 1, BORDER.z1 + 1, -4, h, blue, Enum.Material.ForceField, 0, solid, F.border)
+	wall(BORDER.x1, BORDER.x2, BORDER.z2 - 1, BORDER.z2 + 1, -4, h, blue, Enum.Material.ForceField, 0, solid, F.border)
+	wall(BORDER.x1 - 1, BORDER.x1 + 1, BORDER.z1, BORDER.z2, -4, h, blue, Enum.Material.ForceField, 0, solid, F.border)
+	wall(BORDER.x2 - 1, BORDER.x2 + 1, BORDER.z1, BORDER.z2, -4, h, blue, Enum.Material.ForceField, 0, solid, F.border)
+	-- and an invisible wall at the very edge of the world, so nobody falls off
+	local H = 500
+	wall(WORLD.x1, WORLD.x2, WORLD.z1 - 1, WORLD.z1 + 1, -20, H, blue, Enum.Material.SmoothPlastic, 1, true, F.border)
+	wall(WORLD.x1, WORLD.x2, WORLD.z2 - 1, WORLD.z2 + 1, -20, H, blue, Enum.Material.SmoothPlastic, 1, true, F.border)
+	wall(WORLD.x1 - 1, WORLD.x1 + 1, WORLD.z1, WORLD.z2, -20, H, blue, Enum.Material.SmoothPlastic, 1, true, F.border)
+	wall(WORLD.x2 - 1, WORLD.x2 + 1, WORLD.z1, WORLD.z2, -20, H, blue, Enum.Material.SmoothPlastic, 1, true, F.border)
+end
+
+local function buildSpawnAndSky()
+	-- get rid of the baseplate and any spawn that came with the template
+	local base = workspace:FindFirstChild("Baseplate")
+	if base then base:Destroy() end
+	for _, child in ipairs(workspace:GetChildren()) do
+		if child:IsA("SpawnLocation") then child:Destroy() end
+	end
+	-- spawn on 5th Avenue at 34th Street, looking uptown
+	local spawn = Instance.new("SpawnLocation")
+	spawn.Size = Vector3.new(12, 1, 12)
+	spawn.CFrame = CFrame.new(xOf(7), 0.5, zOf(34))
+	spawn.Anchored = true
+	spawn.Neutral = true
+	spawn.Duration = 0
+	spawn.Color = Color3.fromRGB(240, 240, 240)
+	spawn.Material = Enum.Material.SmoothPlastic
+	spawn.Parent = workspace
+
+	Lighting.ClockTime = 14.5
+	Lighting.Brightness = 2.5
+	if not Lighting:FindFirstChildOfClass("Atmosphere") then
+		local atm = Instance.new("Atmosphere")
+		atm.Density = 0.32
+		atm.Haze = 1.5
+		atm.Parent = Lighting
+	end
+	Terrain.WaterColor = Color3.fromRGB(40, 90, 110)
+	Terrain.WaterTransparency = 0.6
+	Terrain.WaterWaveSize = 0.1
+end
+
+-- Tell the client script where everything is, so it can say which
+-- neighbourhood the player is standing in.
+local function publishInfo()
+	local info = Instance.new("Folder")
+	info.Name = "NewYorkInfo"
+	info:SetAttribute("AvenueSpacing", AVE)
+	info:SetAttribute("StreetUnit", SU)
+	info:SetAttribute("Border", BORDER.x1 .. "," .. BORDER.x2 .. "," .. BORDER.z1 .. "," .. BORDER.z2)
+	local shore = {}
+	for _, row in ipairs(SHORE) do
+		table.insert(shore, row.s .. ":" .. row.e .. ":" .. row.w)
+	end
+	info:SetAttribute("Shore", table.concat(shore, ";"))
+	info:SetAttribute("Avenues", table.concat(AVENUE_NAMES, ";"))
+
+	local order = 0
+	local function publish(zone, kind)
+		order = order + 1
+		local f = Instance.new("Folder")
+		f.Name = zone.name
+		f:SetAttribute("Kind", kind)
+		f:SetAttribute("Order", order)
+		f:SetAttribute("Park", zone.park == true)
+		f:SetAttribute("S1", zone.s1)
+		f:SetAttribute("S2", zone.s2)
+		f:SetAttribute("A1", zone.a1 or -1000)
+		f:SetAttribute("A2", zone.a2 or 1000)
+		f.Parent = info
+	end
+	for _, zone in ipairs(ZONES) do publish(zone, "island") end
+	for _, zone in ipairs(SKYLINES) do publish(zone, "borough") end
+	for _, zone in ipairs(BOROUGHS) do publish(zone, "borough") end
+	info.Parent = ReplicatedStorage
+end
+
+local started = os.clock()
+print("New York: building...")
+buildWater()
+buildBeyond()        print("New York: hills and forest")
+buildBoroughs()      print("New York: the boroughs")
+buildIsland()        print("New York: the island")
+buildBlocks()        print("New York: the blocks")
+buildLandmarks()     print("New York: the landmarks")
+buildBridges()       print("New York: the bridges")
+buildBorder()
+buildSpawnAndSky()
+publishInfo()
+print(string.format("New York: done. %d parts in %.1f seconds.", made, os.clock() - started))
+]]></ProtectedString>
+      </Properties>
+    </Item>
+  </Item>
+  <Item class="StarterPlayer" referent="RBX_StarterPlayer">
+    <Properties><string name="Name">StarterPlayer</string></Properties>
+    <Item class="StarterPlayerScripts" referent="RBX_SPS">
+      <Properties><string name="Name">StarterPlayerScripts</string></Properties>
+    <Item class="LocalScript" referent="RBX_Client0">
+        <Properties>
+          <string name="Name">Neighbourhood</string>
+          <ProtectedString name="Source"><![CDATA[--[[
+Neighbourhood
+A LocalScript. It goes in StarterPlayer > StarterPlayerScripts.
+
+Shows a box in the bottom-left corner that says where you are:
+  Midtown
+  5th Ave & W 34th St
+It gets all the numbers from the NewYorkInfo folder the server script puts
+in ReplicatedStorage, so if the city changes, this changes with it.
+]]
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local player = Players.LocalPlayer
+local info = ReplicatedStorage:WaitForChild("NewYorkInfo")
+
+local AVE = info:GetAttribute("AvenueSpacing")
+local SU = info:GetAttribute("StreetUnit")
+
+-- "s:e:w;s:e:w;..." back into a table
+local SHORE = {}
+for s, e, w in string.gmatch(info:GetAttribute("Shore"), "([^:;]+):([^:;]+):([^:;]+)") do
+	table.insert(SHORE, { s = tonumber(s), e = tonumber(e), w = tonumber(w) })
+end
+
+local AVENUES = {}
+for name in string.gmatch(info:GetAttribute("Avenues"), "[^;]+") do
+	table.insert(AVENUES, name)
+end
+
+local BORDER = {}
+for n in string.gmatch(info:GetAttribute("Border"), "[^,]+") do
+	table.insert(BORDER, tonumber(n))
+end
+
+local ZONES = {}
+for _, f in ipairs(info:GetChildren()) do
+	table.insert(ZONES, {
+		name = f.Name, kind = f:GetAttribute("Kind"), order = f:GetAttribute("Order"), park = f:GetAttribute("Park"),
+		s1 = f:GetAttribute("S1"), s2 = f:GetAttribute("S2"),
+		a1 = f:GetAttribute("A1"), a2 = f:GetAttribute("A2"),
+	})
+end
+table.sort(ZONES, function(p, q) return p.order < q.order end)
+
+local function shoreAt(s)
+	if s <= SHORE[1].s then return SHORE[1].e, SHORE[1].w end
+	for i = 2, #SHORE do
+		local p, q = SHORE[i - 1], SHORE[i]
+		if s <= q.s then
+			local t = (s - p.s) / (q.s - p.s)
+			return p.e + (q.e - p.e) * t, p.w + (q.w - p.w) * t
+		end
+	end
+	return SHORE[#SHORE].e, SHORE[#SHORE].w
+end
+
+local function round(n) return math.floor(n + 0.5) end
+
+local function ordinal(n)
+	local last, lastTwo = n % 10, n % 100
+	if lastTwo >= 11 and lastTwo <= 13 then return n .. "th" end
+	if last == 1 then return n .. "st" end
+	if last == 2 then return n .. "nd" end
+	if last == 3 then return n .. "rd" end
+	return n .. "th"
+end
+
+-- The nearest corner, like "5th Ave & W 34th St"
+local function corner(a, s, park)
+	local avenue = AVENUES[round(a)]
+	local street = round(s)
+	if street < 1 then return "Lower Manhattan" end
+	local side = ""                           -- 5th Avenue is where east turns into west
+	if round(a) > 7 then side = "W " elseif round(a) < 7 then side = "E " end
+	if park or not avenue then return "near " .. side .. ordinal(street) .. " St" end
+	return avenue .. " & " .. side .. ordinal(street) .. " St"
+end
+
+local function whereAmI(x, z)
+	local a, s = x / AVE, -z / SU
+	local e, w = shoreAt(s)
+	local onIsland = s >= SHORE[1].s and s <= SHORE[#SHORE].s and a >= e and a <= w
+	for _, zone in ipairs(ZONES) do
+		local inside = s >= zone.s1 and s < zone.s2 and a >= zone.a1 and a < zone.a2
+		if inside and ((zone.kind == "island") == onIsland) then
+			if onIsland then return zone.name, corner(a, s, zone.park) end
+			return zone.name, ""
+		end
+	end
+	if x < BORDER[1] or x > BORDER[2] or z < BORDER[3] or z > BORDER[4] then
+		return "Beyond the border", ""
+	end
+	if s < -26 then return "New York Harbor", "" end
+	if a < e then return (s > 120) and "Harlem River" or "East River", "" end
+	if a > w then return "Hudson River", "" end
+	return "Somewhere wet", ""
+end
+
+-- The box on screen
+local gui = Instance.new("ScreenGui")
+gui.Name = "Neighbourhood"
+gui.ResetOnSpawn = false
+
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 260, 0, 64)
+frame.Position = UDim2.new(0, 16, 1, -80)
+frame.BackgroundColor3 = Color3.fromRGB(20, 20, 24)
+frame.BackgroundTransparency = 0.25
+frame.BorderSizePixel = 0
+frame.Parent = gui
+
+local rounded = Instance.new("UICorner")
+rounded.CornerRadius = UDim.new(0, 10)
+rounded.Parent = frame
+
+local big = Instance.new("TextLabel")
+big.Size = UDim2.new(1, -20, 0, 30)
+big.Position = UDim2.new(0, 10, 0, 6)
+big.BackgroundTransparency = 1
+big.Font = Enum.Font.GothamBold
+big.TextSize = 22
+big.TextColor3 = Color3.fromRGB(255, 255, 255)
+big.TextXAlignment = Enum.TextXAlignment.Left
+big.TextScaled = false
+big.Text = ""
+big.Parent = frame
+
+local small = Instance.new("TextLabel")
+small.Size = UDim2.new(1, -20, 0, 20)
+small.Position = UDim2.new(0, 10, 0, 36)
+small.BackgroundTransparency = 1
+small.Font = Enum.Font.Gotham
+small.TextSize = 15
+small.TextColor3 = Color3.fromRGB(200, 210, 220)
+small.TextXAlignment = Enum.TextXAlignment.Left
+small.Text = ""
+small.Parent = frame
+
+gui.Parent = player:WaitForChild("PlayerGui")
+
+while true do
+	local character = player.Character
+	local rootPart = character and character:FindFirstChild("HumanoidRootPart")
+	if rootPart then
+		local p = rootPart.Position
+		local name, detail = whereAmI(p.X, p.Z)
+		big.Text = name
+		small.Text = detail
+	end
+	task.wait(0.3)
+end
+]]></ProtectedString>
+        </Properties>
+      </Item>
+    </Item>
+  </Item>
+</roblox>
