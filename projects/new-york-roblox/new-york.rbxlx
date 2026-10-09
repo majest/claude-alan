@@ -36,6 +36,7 @@ the Battery, because the real streets there have names, not numbers.
 ]]
 
 local Lighting = game:GetService("Lighting")
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Terrain = workspace.Terrain
 
@@ -59,6 +60,7 @@ local CONFIG = {
 	BEYOND = 1500,            -- studs of hills and forest past the border. Bigger takes longer to build.
 	HILLS = 80,
 	FOREST_TREES = 600,
+	TAXI_PUSH = 60000,        -- how hard a taxi's engine pushes. More means it shoves parked cars harder.
 	PARTS_PER_BREATH = 400,   -- pause for a frame after this many parts, so the server stays responsive
 }
 
@@ -129,6 +131,24 @@ local SKYLINES = {
 
 -- The border goes round all of that, with a bit of room.
 local BORDER_A = { a1 = -13, a2 = 29, s1 = -115, s2 = 265 }
+
+-- Where the taxis are parked: avenue, street, and which way they face.
+-- "north" means facing uptown. Cars drive on the right, so a northbound
+-- taxi parks on the west side of its avenue and a southbound one on the east.
+local TAXI_SPOTS = {
+	{ a = 7,  s = 36,  facing = "north" },   -- 5th Ave, just up from the spawn
+	{ a = 7,  s = 31,  facing = "south" },
+	{ a = 8,  s = 40,  facing = "north" },   -- 6th Ave
+	{ a = 9,  s = 45,  facing = "south" },   -- 7th Ave, Times Square
+	{ a = 5,  s = 45,  facing = "north" },   -- Park Ave, Grand Central
+	{ a = 7,  s = 52,  facing = "south" },   -- 5th Ave, Rockefeller Center
+	{ a = 10, s = 72,  facing = "north" },   -- 8th Ave, by Central Park
+	{ a = 4,  s = 90,  facing = "south" },   -- Lexington, Upper East Side
+	{ a = 9,  s = 115, facing = "north" },   -- 7th Ave, Harlem
+	{ a = 2,  s = 10,  facing = "south" },   -- 2nd Ave, East Village
+	{ a = 11, s = -8,  facing = "north" },   -- 11th Ave, near One World Trade
+	{ a = 9,  s = 176, facing = "south" },   -- 9th Ave, by the George Washington Bridge
+}
 
 -- Avenue names, east to west. Avenue unit 1 is 1st Avenue.
 local AVENUE_NAMES = {
@@ -263,7 +283,7 @@ end
 local F = {
 	ground = folder("Ground"), buildings = folder("Buildings"), parks = folder("Parks"),
 	landmarks = folder("Landmarks"), boroughs = folder("Boroughs"), bridges = folder("Bridges"),
-	beyond = folder("Beyond"), border = folder("Border"),
+	beyond = folder("Beyond"), border = folder("Border"), taxis = folder("Taxis"),
 }
 
 local made = 0
@@ -750,6 +770,168 @@ local function buildBridges()
 	suspensionBridge("George Washington Bridge", 12.3, 19.2, 178, 36, 140, { 13.8, 17.8 }, F.bridges)
 end
 
+-- ---------------------------------------------------------------------------
+-- Taxis. Each one is a Model: an invisible box that does the colliding, with
+-- the yellow bits welded on for looks, and two constraints that push it
+-- along and turn it. The TaxiDriver LocalScript sets those constraints from
+-- the driver's keys. The server only hands over control and parks it again.
+-- ---------------------------------------------------------------------------
+
+local YELLOW = Color3.fromRGB(255, 200, 30)
+local BLACK = Color3.fromRGB(25, 25, 28)
+
+local function buildTaxi(home, index)
+	local car = Instance.new("Model")
+	car.Name = "Taxi " .. index
+	car:SetAttribute("Taxi", true)
+
+	-- the box that touches the world. Everything else hangs off it.
+	local chassis = Instance.new("Part")
+	chassis.Name = "Chassis"
+	chassis.Size = Vector3.new(6.4, 3.4, 13.6)
+	chassis.CFrame = home * CFrame.new(0, 1.7, 0)
+	chassis.Transparency = 1
+	chassis.CanCollide = true
+	chassis.Anchored = false
+	chassis.CustomPhysicalProperties = PhysicalProperties.new(1, 0.3, 0.5)
+	chassis.Parent = car
+	car.PrimaryPart = chassis
+	made = made + 1
+
+	-- a visible piece, welded to the chassis, weighing nothing
+	local function piece(class, size, offset, colour, material)
+		local p = Instance.new(class)
+		p.Size = size
+		p.CFrame = home * offset
+		p.Color = colour
+		p.Material = material
+		p.Anchored = false
+		p.CanCollide = false
+		p.Massless = true
+		p.TopSurface = Enum.SurfaceType.Smooth
+		p.BottomSurface = Enum.SurfaceType.Smooth
+		p.Parent = car
+		local weld = Instance.new("WeldConstraint")
+		weld.Part0 = chassis
+		weld.Part1 = p
+		weld.Parent = p
+		made = made + 1
+		return p
+	end
+
+	piece("Part", Vector3.new(6, 2.2, 13), CFrame.new(0, 2.3, 0), YELLOW, Enum.Material.SmoothPlastic)
+	piece("Part", Vector3.new(5.4, 3.2, 6.5), CFrame.new(0, 5, 0.5), Color3.fromRGB(40, 50, 60), Enum.Material.Glass)
+	for _, dx in ipairs({ -3.05, 3.05 }) do
+		piece("Part", Vector3.new(0.1, 0.5, 11), CFrame.new(dx, 2.3, 0), BLACK, Enum.Material.SmoothPlastic)   -- the checker stripe
+		for _, dz in ipairs({ -4.3, 4.3 }) do
+			local wheel = piece("Part", Vector3.new(1, 2.6, 2.6), CFrame.new(dx * 0.98, 1.3, dz), BLACK, Enum.Material.SmoothPlastic)
+			wheel.Shape = Enum.PartType.Cylinder   -- a cylinder lies along X, which is exactly an axle
+		end
+		piece("Part", Vector3.new(0.9, 0.5, 0.2), CFrame.new(dx * 0.72, 2.5, -6.6), Color3.fromRGB(255, 255, 220), Enum.Material.Neon)
+		piece("Part", Vector3.new(0.9, 0.5, 0.2), CFrame.new(dx * 0.72, 2.5, 6.6), Color3.fromRGB(255, 40, 40), Enum.Material.Neon)
+	end
+	piece("Part", Vector3.new(2.6, 0.6, 0.9), CFrame.new(0, 6.9, 0.5), Color3.fromRGB(255, 240, 150), Enum.Material.Neon)   -- the roof light
+
+	-- the seat. The player's keys turn into Throttle and Steer on it.
+	local seat = Instance.new("VehicleSeat")
+	seat.Name = "DriverSeat"
+	seat.Size = Vector3.new(2, 1, 2)
+	seat.CFrame = home * CFrame.new(-1.2, 3.9, -0.5)
+	seat.Transparency = 1
+	seat.Anchored = false
+	seat.CanCollide = false
+	seat.Massless = true
+	seat.HeadsUpDisplay = false
+	seat.Parent = car
+	local seatWeld = Instance.new("WeldConstraint")
+	seatWeld.Part0 = chassis
+	seatWeld.Part1 = seat
+	seatWeld.Parent = seat
+	made = made + 1
+
+	-- the two constraints that move it. Both start at zero, which is the brake.
+	local root = Instance.new("Attachment")
+	root.Name = "Root"
+	root.Parent = chassis
+
+	local push = Instance.new("LinearVelocity")
+	push.Name = "Push"
+	push.Attachment0 = root
+	push.RelativeTo = Enum.ActuatorRelativeTo.Attachment0
+	push.VelocityConstraintMode = Enum.VelocityConstraintMode.Plane
+	push.PrimaryTangentAxis = Vector3.new(0, 0, -1)    -- forward
+	push.SecondaryTangentAxis = Vector3.new(1, 0, 0)   -- sideways. Up is left free, so gravity still works.
+	push.PlaneVelocity = Vector2.new(0, 0)
+	push.MaxForce = CONFIG.TAXI_PUSH
+	push.Parent = chassis
+
+	local turn = Instance.new("AngularVelocity")
+	turn.Name = "Turn"
+	turn.Attachment0 = root
+	turn.RelativeTo = Enum.ActuatorRelativeTo.World
+	turn.AngularVelocity = Vector3.new(0, 0, 0)        -- holding X and Z at zero keeps it level, so it cannot flip
+	turn.MaxTorque = 400000
+	turn.Parent = chassis
+
+	-- press E to get in
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.ActionText = "Drive"
+	prompt.ObjectText = "Taxi"
+	prompt.KeyboardKeyCode = Enum.KeyCode.E
+	prompt.MaxActivationDistance = 12
+	prompt.RequiresLineOfSight = false
+	prompt.Parent = seat
+
+	prompt.Triggered:Connect(function(player)
+		local character = player.Character
+		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+		if humanoid and not seat.Occupant then
+			seat:Sit(humanoid)
+		end
+	end)
+
+	-- whoever is driving runs the physics on their own computer: that is what
+	-- makes the steering feel instant. When they get out, the server takes it
+	-- back and puts the brakes on.
+	seat:GetPropertyChangedSignal("Occupant"):Connect(function()
+		local humanoid = seat.Occupant
+		local player = humanoid and Players:GetPlayerFromCharacter(humanoid.Parent)
+		if player then
+			chassis:SetNetworkOwner(player)
+		else
+			chassis:SetNetworkOwnershipAuto()
+			push.PlaneVelocity = Vector2.new(0, 0)
+			turn.AngularVelocity = Vector3.new(0, 0, 0)
+		end
+	end)
+
+	car.Parent = F.taxis
+	return car, chassis, seat
+end
+
+local function buildTaxis()
+	local parked = {}
+	for i, spot in ipairs(TAXI_SPOTS) do
+		local north = spot.facing == "north"
+		local x = xOf(spot.a) + (north and 4.5 or -4.5)
+		local home = CFrame.new(x, 0, zOf(spot.s)) * CFrame.Angles(0, north and 0 or math.pi, 0)
+		local car, chassis, seat = buildTaxi(home, i)
+		table.insert(parked, { chassis = chassis, seat = seat, home = home * CFrame.new(0, 1.7, 0) })
+	end
+	-- every so often, put back any empty taxi that has ended up in the water
+	task.spawn(function()
+		while true do
+			task.wait(10)
+			for _, t in ipairs(parked) do
+				if t.chassis.Parent and not t.seat.Occupant and t.chassis.Position.Y < -2 then
+					t.chassis.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+					t.chassis.CFrame = t.home
+				end
+			end
+		end
+	end)
+end
+
 local function buildBorder()
 	local blue = Color3.fromRGB(90, 200, 255)
 	local h = CONFIG.BORDER_HEIGHT
@@ -844,6 +1026,7 @@ buildIsland()        print("New York: the island")
 buildBlocks()        print("New York: the blocks")
 buildLandmarks()     print("New York: the landmarks")
 buildBridges()       print("New York: the bridges")
+buildTaxis()         print("New York: the taxis")
 buildBorder()
 buildSpawnAndSky()
 publishInfo()
@@ -1012,6 +1195,134 @@ while true do
 	end
 	task.wait(0.3)
 end
+]]></ProtectedString>
+        </Properties>
+      </Item>
+    <Item class="LocalScript" referent="RBX_Client1">
+        <Properties>
+          <string name="Name">TaxiDriver</string>
+          <ProtectedString name="Source"><![CDATA[--[[
+TaxiDriver
+A LocalScript. It goes in StarterPlayer > StarterPlayerScripts.
+
+Drives the taxis. When you sit in a taxi's seat, this starts running every
+frame: it reads the seat's Throttle and Steer (which Roblox fills in from
+W A S D, the arrow keys, or the thumbstick on a phone) and sets the two
+constraints on the car that push it along and turn it.
+
+It runs on the driver's own computer rather than the server on purpose.
+The server hands the car's physics to the driver the moment they sit down,
+so what this script does takes effect at once, with no round trip to the
+server and back. That is what makes steering feel instant.
+
+Space gets you out, which is how every seat in Roblox works.
+]]
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+
+local MAX_SPEED = 90      -- studs per second. A character runs at 16.
+local REVERSE_SPEED = 30
+local ACCEL = 45          -- studs per second, per second
+local BRAKE = 90
+local COAST = 25          -- how fast it slows with no key held
+local TURN = 1.7          -- radians per second at full speed
+
+local driving = nil       -- the car being driven right now, or nil
+
+local function clamp(n, lo, hi)
+	if n < lo then return lo end
+	if n > hi then return hi end
+	return n
+end
+
+-- The hint that shows while you drive
+local gui = Instance.new("ScreenGui")
+gui.Name = "TaxiHint"
+gui.ResetOnSpawn = false
+local hint = Instance.new("TextLabel")
+hint.Size = UDim2.new(0, 420, 0, 34)
+hint.Position = UDim2.new(0.5, -210, 1, -50)
+hint.BackgroundColor3 = Color3.fromRGB(255, 200, 30)
+hint.BackgroundTransparency = 0.1
+hint.TextColor3 = Color3.fromRGB(30, 25, 0)
+hint.Font = Enum.Font.GothamBold
+hint.TextSize = 16
+hint.Text = "W / S  drive      A / D  steer      Space  get out"
+hint.Visible = false
+hint.Parent = gui
+local rounded = Instance.new("UICorner")
+rounded.CornerRadius = UDim.new(0, 8)
+rounded.Parent = hint
+gui.Parent = player:WaitForChild("PlayerGui")
+
+local function stopDriving()
+	if driving then
+		driving.push.PlaneVelocity = Vector2.new(0, 0)
+		driving.turn.AngularVelocity = Vector3.new(0, 0, 0)
+	end
+	driving = nil
+	hint.Visible = false
+end
+
+local function startDriving(seat)
+	local car = seat.Parent
+	local chassis = car and car:FindFirstChild("Chassis")
+	local push = chassis and chassis:FindFirstChild("Push")
+	local turn = chassis and chassis:FindFirstChild("Turn")
+	if not (push and turn) then return end
+	driving = { seat = seat, push = push, turn = turn, speed = 0 }
+	hint.Visible = true
+end
+
+-- Every frame while driving
+RunService.RenderStepped:Connect(function(dt)
+	local d = driving
+	if not d then return end
+	local throttle, steer = d.seat.ThrottleFloat, d.seat.SteerFloat
+
+	if throttle > 0 then
+		d.speed = math.min(d.speed + ACCEL * throttle * dt, MAX_SPEED)
+	elseif throttle < 0 then
+		if d.speed > 0 then
+			d.speed = math.max(d.speed - BRAKE * dt, 0)              -- brake first...
+		else
+			d.speed = math.max(d.speed - ACCEL * 0.6 * dt, -REVERSE_SPEED)   -- ...then reverse
+		end
+	else
+		if d.speed > 0 then
+			d.speed = math.max(d.speed - COAST * dt, 0)
+		else
+			d.speed = math.min(d.speed + COAST * dt, 0)
+		end
+	end
+
+	-- You cannot turn a car that is standing still, and in reverse the
+	-- steering goes the other way. Scaling by speed does both.
+	local grip = clamp(d.speed / (MAX_SPEED * 0.4), -1, 1)
+	local yaw = -steer * TURN * grip
+
+	d.push.PlaneVelocity = Vector2.new(d.speed, 0)
+	d.turn.AngularVelocity = Vector3.new(0, yaw, 0)
+end)
+
+-- Notice when this player sits down in, or gets out of, a taxi
+local function watch(character)
+	local humanoid = character:WaitForChild("Humanoid")
+	humanoid.Seated:Connect(function(active, seat)
+		local car = seat and seat.Parent
+		if active and seat:IsA("VehicleSeat") and car and car:GetAttribute("Taxi") then
+			startDriving(seat)
+		else
+			stopDriving()
+		end
+	end)
+end
+
+if player.Character then watch(player.Character) end
+player.CharacterAdded:Connect(watch)
 ]]></ProtectedString>
         </Properties>
       </Item>

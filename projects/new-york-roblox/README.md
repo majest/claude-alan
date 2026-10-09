@@ -11,13 +11,14 @@ The idea is Alan's. **Not published yet** — Alan will say when it is finished.
 ```
 roblox/BuildNewYork.server.lua    the city. A Script, for ServerScriptService.
 roblox/Neighbourhood.client.lua   the "you are in Midtown" box. A LocalScript.
+roblox/TaxiDriver.client.lua      drives the taxis. A LocalScript.
 new-york.rbxlx                    a Roblox place with both scripts in it (made by tools/build.py)
 index.html                        the web page: the map, the steps for Studio, the scripts
 tools/build.py                    writes new-york.rbxlx and copies the scripts into index.html
 tools/check.py                    runs the scripts in a pretend Roblox and reports mistakes
 ```
 
-**The two files in `roblox/` are the real thing.** Edit those, then run
+**The three files in `roblox/` are the real thing.** Edit those, then run
 `python3 tools/build.py`. Do not edit the scripts inside `index.html` or the
 `.rbxlx` by hand; the next build would overwrite them.
 
@@ -51,11 +52,27 @@ loops that turn them into parts.
 - **Beyond the border** the hills are balls of terrain sunk most of the way
   into the ground, and the trees find the ground under them with a ray cast
   straight down, so they sit on the hills instead of floating.
+- **The taxis** are each a Model: an invisible box (`Chassis`) that does
+  all the colliding, with the yellow body, wheels and lights welded on and
+  marked `Massless` so they are only for looks. Two constraints move it. A
+  `LinearVelocity` in *Plane* mode pushes it forward and sideways relative
+  to the car, leaving *up* free so gravity still works and it can go up the
+  bridge ramps. An `AngularVelocity` turns it about the world's Y axis and
+  holds the other two axes at zero, which is why it can never flip over.
+  The `VehicleSeat` is what turns W A S D into `Throttle` and `Steer`; the
+  `ProximityPrompt` on it is the "press E" that sits you down.
+- **Who drives the physics.** When someone sits, the server gives them
+  network ownership of the chassis; from then on their own computer
+  simulates the car, and `TaxiDriver` sets the two constraints every frame
+  from the seat's throttle and steer. That is the standard way to make a
+  Roblox car feel responsive. When they get out the server takes it back
+  and sets both constraints to zero, which is the handbrake: a parked taxi
+  cannot be nudged away.
 - **The client script** gets everything it needs (the shoreline, the zones,
   the grid size) from attributes the server puts in `ReplicatedStorage`, so
   it does not have its own copy of the map to keep in step.
 
-About 6,700 parts in total, and a few seconds to build.
+About 6,900 parts in total, and a few seconds to build.
 
 ## Checking it without Roblox
 
@@ -69,7 +86,9 @@ here. So `check.py` builds a pretend Roblox in plain Lua — `Instance.new`,
 scripts on it. It catches the things that actually go wrong: a property
 spelt wrong, a material that does not exist, a part over 2048 studs, a
 number that came out as `nan`, a table that was `nil`. It also walks a
-pretend player to ten spots and prints what the neighbourhood box would say.
+pretend player to ten spots and prints what the neighbourhood box would say,
+then sits them in a taxi, holds W, steers, and gets out, checking the car
+sped up, turned the right way, and stopped.
 
 It cannot say whether the city *looks* right. Only Studio can.
 
@@ -84,6 +103,11 @@ once someone has:
   south, flip the angle in its `build` function.
 - **Build time.** The terrain fill covers the whole world, including the sea.
   If the game takes too long to start, turn `BEYOND` down.
+- **The taxi physics has never been driven.** The checker proves the
+  numbers go to the right places; it cannot feel whether 90 studs a second
+  is fun or terrifying, whether the chassis rides up the bridge ramps, or
+  whether a taxi can be pushed into a river. `MAX_SPEED`, `ACCEL` and
+  `TURN` at the top of `TaxiDriver` are the first things to try.
 - **Water depth** is only 4 studs. If it looks wrong from a bridge, deepen
   the water fill in `buildWater`.
 

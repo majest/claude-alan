@@ -24,6 +24,7 @@ the Battery, because the real streets there have names, not numbers.
 ]]
 
 local Lighting = game:GetService("Lighting")
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Terrain = workspace.Terrain
 
@@ -47,6 +48,7 @@ local CONFIG = {
 	BEYOND = 1500,            -- studs of hills and forest past the border. Bigger takes longer to build.
 	HILLS = 80,
 	FOREST_TREES = 600,
+	TAXI_PUSH = 60000,        -- how hard a taxi's engine pushes. More means it shoves parked cars harder.
 	PARTS_PER_BREATH = 400,   -- pause for a frame after this many parts, so the server stays responsive
 }
 
@@ -117,6 +119,24 @@ local SKYLINES = {
 
 -- The border goes round all of that, with a bit of room.
 local BORDER_A = { a1 = -13, a2 = 29, s1 = -115, s2 = 265 }
+
+-- Where the taxis are parked: avenue, street, and which way they face.
+-- "north" means facing uptown. Cars drive on the right, so a northbound
+-- taxi parks on the west side of its avenue and a southbound one on the east.
+local TAXI_SPOTS = {
+	{ a = 7,  s = 36,  facing = "north" },   -- 5th Ave, just up from the spawn
+	{ a = 7,  s = 31,  facing = "south" },
+	{ a = 8,  s = 40,  facing = "north" },   -- 6th Ave
+	{ a = 9,  s = 45,  facing = "south" },   -- 7th Ave, Times Square
+	{ a = 5,  s = 45,  facing = "north" },   -- Park Ave, Grand Central
+	{ a = 7,  s = 52,  facing = "south" },   -- 5th Ave, Rockefeller Center
+	{ a = 10, s = 72,  facing = "north" },   -- 8th Ave, by Central Park
+	{ a = 4,  s = 90,  facing = "south" },   -- Lexington, Upper East Side
+	{ a = 9,  s = 115, facing = "north" },   -- 7th Ave, Harlem
+	{ a = 2,  s = 10,  facing = "south" },   -- 2nd Ave, East Village
+	{ a = 11, s = -8,  facing = "north" },   -- 11th Ave, near One World Trade
+	{ a = 9,  s = 176, facing = "south" },   -- 9th Ave, by the George Washington Bridge
+}
 
 -- Avenue names, east to west. Avenue unit 1 is 1st Avenue.
 local AVENUE_NAMES = {
@@ -251,7 +271,7 @@ end
 local F = {
 	ground = folder("Ground"), buildings = folder("Buildings"), parks = folder("Parks"),
 	landmarks = folder("Landmarks"), boroughs = folder("Boroughs"), bridges = folder("Bridges"),
-	beyond = folder("Beyond"), border = folder("Border"),
+	beyond = folder("Beyond"), border = folder("Border"), taxis = folder("Taxis"),
 }
 
 local made = 0
@@ -738,6 +758,168 @@ local function buildBridges()
 	suspensionBridge("George Washington Bridge", 12.3, 19.2, 178, 36, 140, { 13.8, 17.8 }, F.bridges)
 end
 
+-- ---------------------------------------------------------------------------
+-- Taxis. Each one is a Model: an invisible box that does the colliding, with
+-- the yellow bits welded on for looks, and two constraints that push it
+-- along and turn it. The TaxiDriver LocalScript sets those constraints from
+-- the driver's keys. The server only hands over control and parks it again.
+-- ---------------------------------------------------------------------------
+
+local YELLOW = Color3.fromRGB(255, 200, 30)
+local BLACK = Color3.fromRGB(25, 25, 28)
+
+local function buildTaxi(home, index)
+	local car = Instance.new("Model")
+	car.Name = "Taxi " .. index
+	car:SetAttribute("Taxi", true)
+
+	-- the box that touches the world. Everything else hangs off it.
+	local chassis = Instance.new("Part")
+	chassis.Name = "Chassis"
+	chassis.Size = Vector3.new(6.4, 3.4, 13.6)
+	chassis.CFrame = home * CFrame.new(0, 1.7, 0)
+	chassis.Transparency = 1
+	chassis.CanCollide = true
+	chassis.Anchored = false
+	chassis.CustomPhysicalProperties = PhysicalProperties.new(1, 0.3, 0.5)
+	chassis.Parent = car
+	car.PrimaryPart = chassis
+	made = made + 1
+
+	-- a visible piece, welded to the chassis, weighing nothing
+	local function piece(class, size, offset, colour, material)
+		local p = Instance.new(class)
+		p.Size = size
+		p.CFrame = home * offset
+		p.Color = colour
+		p.Material = material
+		p.Anchored = false
+		p.CanCollide = false
+		p.Massless = true
+		p.TopSurface = Enum.SurfaceType.Smooth
+		p.BottomSurface = Enum.SurfaceType.Smooth
+		p.Parent = car
+		local weld = Instance.new("WeldConstraint")
+		weld.Part0 = chassis
+		weld.Part1 = p
+		weld.Parent = p
+		made = made + 1
+		return p
+	end
+
+	piece("Part", Vector3.new(6, 2.2, 13), CFrame.new(0, 2.3, 0), YELLOW, Enum.Material.SmoothPlastic)
+	piece("Part", Vector3.new(5.4, 3.2, 6.5), CFrame.new(0, 5, 0.5), Color3.fromRGB(40, 50, 60), Enum.Material.Glass)
+	for _, dx in ipairs({ -3.05, 3.05 }) do
+		piece("Part", Vector3.new(0.1, 0.5, 11), CFrame.new(dx, 2.3, 0), BLACK, Enum.Material.SmoothPlastic)   -- the checker stripe
+		for _, dz in ipairs({ -4.3, 4.3 }) do
+			local wheel = piece("Part", Vector3.new(1, 2.6, 2.6), CFrame.new(dx * 0.98, 1.3, dz), BLACK, Enum.Material.SmoothPlastic)
+			wheel.Shape = Enum.PartType.Cylinder   -- a cylinder lies along X, which is exactly an axle
+		end
+		piece("Part", Vector3.new(0.9, 0.5, 0.2), CFrame.new(dx * 0.72, 2.5, -6.6), Color3.fromRGB(255, 255, 220), Enum.Material.Neon)
+		piece("Part", Vector3.new(0.9, 0.5, 0.2), CFrame.new(dx * 0.72, 2.5, 6.6), Color3.fromRGB(255, 40, 40), Enum.Material.Neon)
+	end
+	piece("Part", Vector3.new(2.6, 0.6, 0.9), CFrame.new(0, 6.9, 0.5), Color3.fromRGB(255, 240, 150), Enum.Material.Neon)   -- the roof light
+
+	-- the seat. The player's keys turn into Throttle and Steer on it.
+	local seat = Instance.new("VehicleSeat")
+	seat.Name = "DriverSeat"
+	seat.Size = Vector3.new(2, 1, 2)
+	seat.CFrame = home * CFrame.new(-1.2, 3.9, -0.5)
+	seat.Transparency = 1
+	seat.Anchored = false
+	seat.CanCollide = false
+	seat.Massless = true
+	seat.HeadsUpDisplay = false
+	seat.Parent = car
+	local seatWeld = Instance.new("WeldConstraint")
+	seatWeld.Part0 = chassis
+	seatWeld.Part1 = seat
+	seatWeld.Parent = seat
+	made = made + 1
+
+	-- the two constraints that move it. Both start at zero, which is the brake.
+	local root = Instance.new("Attachment")
+	root.Name = "Root"
+	root.Parent = chassis
+
+	local push = Instance.new("LinearVelocity")
+	push.Name = "Push"
+	push.Attachment0 = root
+	push.RelativeTo = Enum.ActuatorRelativeTo.Attachment0
+	push.VelocityConstraintMode = Enum.VelocityConstraintMode.Plane
+	push.PrimaryTangentAxis = Vector3.new(0, 0, -1)    -- forward
+	push.SecondaryTangentAxis = Vector3.new(1, 0, 0)   -- sideways. Up is left free, so gravity still works.
+	push.PlaneVelocity = Vector2.new(0, 0)
+	push.MaxForce = CONFIG.TAXI_PUSH
+	push.Parent = chassis
+
+	local turn = Instance.new("AngularVelocity")
+	turn.Name = "Turn"
+	turn.Attachment0 = root
+	turn.RelativeTo = Enum.ActuatorRelativeTo.World
+	turn.AngularVelocity = Vector3.new(0, 0, 0)        -- holding X and Z at zero keeps it level, so it cannot flip
+	turn.MaxTorque = 400000
+	turn.Parent = chassis
+
+	-- press E to get in
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.ActionText = "Drive"
+	prompt.ObjectText = "Taxi"
+	prompt.KeyboardKeyCode = Enum.KeyCode.E
+	prompt.MaxActivationDistance = 12
+	prompt.RequiresLineOfSight = false
+	prompt.Parent = seat
+
+	prompt.Triggered:Connect(function(player)
+		local character = player.Character
+		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+		if humanoid and not seat.Occupant then
+			seat:Sit(humanoid)
+		end
+	end)
+
+	-- whoever is driving runs the physics on their own computer: that is what
+	-- makes the steering feel instant. When they get out, the server takes it
+	-- back and puts the brakes on.
+	seat:GetPropertyChangedSignal("Occupant"):Connect(function()
+		local humanoid = seat.Occupant
+		local player = humanoid and Players:GetPlayerFromCharacter(humanoid.Parent)
+		if player then
+			chassis:SetNetworkOwner(player)
+		else
+			chassis:SetNetworkOwnershipAuto()
+			push.PlaneVelocity = Vector2.new(0, 0)
+			turn.AngularVelocity = Vector3.new(0, 0, 0)
+		end
+	end)
+
+	car.Parent = F.taxis
+	return car, chassis, seat
+end
+
+local function buildTaxis()
+	local parked = {}
+	for i, spot in ipairs(TAXI_SPOTS) do
+		local north = spot.facing == "north"
+		local x = xOf(spot.a) + (north and 4.5 or -4.5)
+		local home = CFrame.new(x, 0, zOf(spot.s)) * CFrame.Angles(0, north and 0 or math.pi, 0)
+		local car, chassis, seat = buildTaxi(home, i)
+		table.insert(parked, { chassis = chassis, seat = seat, home = home * CFrame.new(0, 1.7, 0) })
+	end
+	-- every so often, put back any empty taxi that has ended up in the water
+	task.spawn(function()
+		while true do
+			task.wait(10)
+			for _, t in ipairs(parked) do
+				if t.chassis.Parent and not t.seat.Occupant and t.chassis.Position.Y < -2 then
+					t.chassis.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+					t.chassis.CFrame = t.home
+				end
+			end
+		end
+	end)
+end
+
 local function buildBorder()
 	local blue = Color3.fromRGB(90, 200, 255)
 	local h = CONFIG.BORDER_HEIGHT
@@ -832,6 +1014,7 @@ buildIsland()        print("New York: the island")
 buildBlocks()        print("New York: the blocks")
 buildLandmarks()     print("New York: the landmarks")
 buildBridges()       print("New York: the bridges")
+buildTaxis()         print("New York: the taxis")
 buildBorder()
 buildSpawnAndSky()
 publishInfo()

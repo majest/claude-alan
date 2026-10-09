@@ -19,6 +19,7 @@ SCRIPTS = [
     # (file, name in Studio, class, where it goes)
     ("BuildNewYork.server.lua", "BuildNewYork", "Script", "ServerScriptService"),
     ("Neighbourhood.client.lua", "Neighbourhood", "LocalScript", "StarterPlayerScripts"),
+    ("TaxiDriver.client.lua", "TaxiDriver", "LocalScript", "StarterPlayerScripts"),
 ]
 
 
