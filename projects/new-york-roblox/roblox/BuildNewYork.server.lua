@@ -4,9 +4,9 @@ A Script. It goes in ServerScriptService.
 
 When the game starts this builds Manhattan from nothing: the island, the
 street grid, the neighbourhoods and their buildings, Central Park, a dozen
-landmarks, the rivers, the other boroughs and New Jersey, a glowing border
-round the whole city, and hills and forest beyond the border so the world
-does not just stop at the edge.
+landmarks, the rivers, the other boroughs and New Jersey, an invisible
+border round the whole city, and hills and forest beyond the border so the
+world does not just stop at the edge.
 
 Nothing is placed by hand. Everything comes from the tables near the top:
 change a number there and the city changes. The shoreline is a list of
@@ -41,7 +41,8 @@ local CONFIG = {
 	BUILDINGS_PER_BLOCK = 3,  -- at most this many buildings in one block
 	EMPTY_LOT_CHANCE = 0.08,  -- some lots are left empty, like a real city
 	PARK_TREES_PER_BLOCK = 4,
-	BORDER_SOLID = true,      -- true: the glowing border stops you. false: you can walk out into the hills.
+	BORDER_SOLID = true,      -- true: the border stops you. false: you can walk out into the hills.
+	BORDER_VISIBLE = false,   -- false: an invisible wall. true: a glowing blue force field you can see.
 	BORDER_HEIGHT = 120,
 	BEYOND = 1500,            -- studs of hills and forest past the border. Bigger takes longer to build.
 	HILLS = 80,
@@ -741,10 +742,13 @@ local function buildBorder()
 	local blue = Color3.fromRGB(90, 200, 255)
 	local h = CONFIG.BORDER_HEIGHT
 	local solid = CONFIG.BORDER_SOLID
-	wall(BORDER.x1, BORDER.x2, BORDER.z1 - 1, BORDER.z1 + 1, -4, h, blue, Enum.Material.ForceField, 0, solid, F.border)
-	wall(BORDER.x1, BORDER.x2, BORDER.z2 - 1, BORDER.z2 + 1, -4, h, blue, Enum.Material.ForceField, 0, solid, F.border)
-	wall(BORDER.x1 - 1, BORDER.x1 + 1, BORDER.z1, BORDER.z2, -4, h, blue, Enum.Material.ForceField, 0, solid, F.border)
-	wall(BORDER.x2 - 1, BORDER.x2 + 1, BORDER.z1, BORDER.z2, -4, h, blue, Enum.Material.ForceField, 0, solid, F.border)
+	-- invisible means Transparency 1: the part is still there, you just cannot see it
+	local material = CONFIG.BORDER_VISIBLE and Enum.Material.ForceField or Enum.Material.SmoothPlastic
+	local see = CONFIG.BORDER_VISIBLE and 0 or 1
+	wall(BORDER.x1, BORDER.x2, BORDER.z1 - 1, BORDER.z1 + 1, -4, h, blue, material, see, solid, F.border)
+	wall(BORDER.x1, BORDER.x2, BORDER.z2 - 1, BORDER.z2 + 1, -4, h, blue, material, see, solid, F.border)
+	wall(BORDER.x1 - 1, BORDER.x1 + 1, BORDER.z1, BORDER.z2, -4, h, blue, material, see, solid, F.border)
+	wall(BORDER.x2 - 1, BORDER.x2 + 1, BORDER.z1, BORDER.z2, -4, h, blue, material, see, solid, F.border)
 	-- and an invisible wall at the very edge of the world, so nobody falls off
 	local H = 500
 	wall(WORLD.x1, WORLD.x2, WORLD.z1 - 1, WORLD.z1 + 1, -20, H, blue, Enum.Material.SmoothPlastic, 1, true, F.border)

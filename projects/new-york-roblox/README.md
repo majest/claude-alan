@@ -1,7 +1,7 @@
 # New York in Roblox
 
 A Roblox map of Manhattan that a script builds from nothing when the game
-starts, with the other boroughs across the water, a glowing border round the
+starts, with the other boroughs across the water, an invisible border round the
 lot, and hills and forest beyond the border so the world does not just stop.
 
 The idea is Alan's. **Not published yet** — Alan will say when it is finished.
@@ -96,3 +96,7 @@ touches `.github/`.
   asked for "a border", so that is what it does; set it to `false` to let
   players walk out into the hills. Claude would keep it solid and make the
   hills something to look at, not somewhere to get lost.
+- **The border is invisible** because Alan asked for that
+  (`BORDER_VISIBLE = false`). The cost is that you cannot see it coming, so
+  you find it by walking into it. If that gets annoying, a thin line on the
+  ground along the edge would show where it is without a wall in the sky.
