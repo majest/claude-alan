@@ -27,6 +27,8 @@ HERE = pathlib.Path(__file__).resolve().parent.parent
 SERVER = HERE / "roblox" / "BuildNewYork.server.lua"
 CLIENT = HERE / "roblox" / "Neighbourhood.client.lua"
 TAXI = HERE / "roblox" / "TaxiDriver.client.lua"
+MONSTER = HERE / "roblox" / "Monster.server.lua"
+EFFECTS = HERE / "roblox" / "MonsterEffects.client.lua"
 
 MOCK = r"""
 -- =========================================================================
@@ -45,6 +47,7 @@ V3.__index = function(v, k)
     if k == "Unit" then local m = v.Magnitude; return Vector3.new(v.X / m, v.Y / m, v.Z / m) end
     return V3[k]
 end
+function V3.Dot(a, b) return a.X * b.X + a.Y * b.Y + a.Z * b.Z end
 V3.__add = function(a, b) return Vector3.new(a.X + b.X, a.Y + b.Y, a.Z + b.Z) end
 V3.__sub = function(a, b) return Vector3.new(a.X - b.X, a.Y - b.Y, a.Z - b.Z) end
 V3.__unm = function(a) return Vector3.new(-a.X, -a.Y, -a.Z) end
@@ -105,6 +108,7 @@ function Color3.fromRGB(r, g, b)
     return Color3.new(r / 255, g / 255, b / 255)
 end
 local UDim2 = { new = function(a, b, c, d) return { __isUDim2 = true, a, b, c, d } end }
+local OverlapParams = { new = function() return { __isOverlapParams = true, FilterDescendantsInstances = {}, MaxParts = 0 } end }
 local UDim = { new = function(a, b) return { __isUDim = true, a, b } end }
 
 -- Enum --------------------------------------------------------------------
@@ -120,6 +124,8 @@ local ENUMS = {
     Font = { Gotham = true, GothamBold = true, GothamMedium = true, SourceSans = true, SourceSansBold = true, Arial = true },
     TextXAlignment = { Left = true, Center = true, Right = true },
     ActuatorRelativeTo = { Attachment0 = true, Attachment1 = true, World = true },
+    RaycastFilterType = { Include = true, Exclude = true },
+    RenderPriority = { First = 0, Input = 100, Camera = 200, Character = 300, Last = 2000 },
     VelocityConstraintMode = { Line = true, Plane = true, Vector = true },
     KeyCode = { E = true, F = true, Space = true },
 }
@@ -134,7 +140,7 @@ local Enum = setmetatable({}, { __index = function(_, category)
     if not names then fail("no such Enum: Enum." .. tostring(category)); names = {} end
     return setmetatable({}, { __index = function(_, name)
         if not names[name] then fail("no such Enum." .. category .. "." .. tostring(name)) end
-        return { __isEnum = true, category = category, name = name }
+        return { __isEnum = true, category = category, name = name, Value = type(names[name]) == "number" and names[name] or 0 }
     end })
 end })
 
@@ -160,8 +166,9 @@ local PROPS = {
         ReactionTorqueEnabled = true, Enabled = true }),
     ProximityPrompt = with({ ActionText = true, ObjectText = true, HoldDuration = true, MaxActivationDistance = true,
         KeyboardKeyCode = true, RequiresLineOfSight = true, Style = true, Enabled = true }),
-    Humanoid = with({ SeatPart = true, Sit = true }),
-    RunService = with({}),
+    Humanoid = with({ SeatPart = true, Sit = true, Health = true, MaxHealth = true }),
+    RunService = with({}), Debris = with({}),
+    Camera = with({ CFrame = true, Focus = true, FieldOfView = true, CameraType = true, CameraSubject = true }),
     Folder = with({}),
     Model = with({ PrimaryPart = true }),
     BillboardGui = with({ Size = true, StudsOffsetWorldSpace = true, StudsOffset = true, AlwaysOnTop = true, MaxDistance = true, Adornee = true }),
@@ -174,7 +181,7 @@ local PROPS = {
     Lighting = with({ ClockTime = true, Brightness = true, Ambient = true, OutdoorAmbient = true, GlobalShadows = true,
         EnvironmentDiffuseScale = true, EnvironmentSpecularScale = true, FogEnd = true, FogStart = true }),
     Terrain = with({ WaterColor = true, WaterTransparency = true, WaterWaveSize = true, WaterWaveSpeed = true, WaterReflectance = true }),
-    Workspace = with({}), ReplicatedStorage = with({}), Players = with({ LocalPlayer = true }), Player = with({ Character = true }), PlayerGui = with({}),
+    Workspace = with({ CurrentCamera = true, Gravity = true }), ReplicatedStorage = with({}), Players = with({ LocalPlayer = true }), Player = with({ Character = true }), PlayerGui = with({}),
     StarterPlayer = with({}), ServerScriptService = with({}),
 }
 
@@ -215,6 +222,52 @@ local function newInstance(class)
         if not humanoid or humanoid.ClassName ~= "Humanoid" then fail("Sit without a Humanoid") end
         proxy.Occupant = humanoid
         if self.__propEvents.Occupant then self.__propEvents.Occupant.fire() end
+    end
+    function methods.GetPlayers()
+        local list = {}
+        for _, ch in ipairs(self.__children) do if ch.ClassName == "Player" then table.insert(list, ch) end end
+        return list
+    end
+    function methods.TakeDamage(_, n)
+        if class ~= "Humanoid" then fail("TakeDamage on a " .. class) end
+        proxy.Health = math.max(0, (self.__props.Health or 100) - n)
+    end
+    function methods.AddItem(_, inst, t)
+        if class ~= "Debris" then fail("AddItem on a " .. class) end
+        if not (inst and inst.ClassName) then fail("Debris:AddItem without an Instance") end
+        if type(t) ~= "number" then fail("Debris:AddItem without a time") end
+    end
+    function methods.GetDescendants()
+        local out = {}
+        local function walk(inst)
+            for _, ch in ipairs(inst.__raw.__children) do table.insert(out, ch); walk(ch) end
+        end
+        walk(proxy)
+        return out
+    end
+    -- a crude overlap: anything in the filter list whose centre is within the two sizes of each other
+    function methods.GetPartsInPart(_, part, params)
+        if class ~= "Workspace" then fail("GetPartsInPart on a " .. class) end
+        if not (params and params.__isOverlapParams) then fail("GetPartsInPart without OverlapParams") end
+        local out = {}
+        local reach = part.Size.Magnitude / 2
+        for _, folder in ipairs(params.FilterDescendantsInstances) do
+            for _, d in ipairs(folder:GetDescendants()) do
+                if (d.ClassName == "Part" or d.ClassName == "WedgePart") and d ~= part and d.Size and d.Position then
+                    if (d.Position - part.Position).Magnitude < reach + d.Size.Magnitude / 2 then
+                        table.insert(out, d)
+                        if params.MaxParts > 0 and #out >= params.MaxParts then return out end
+                    end
+                end
+            end
+        end
+        return out
+    end
+    function methods.BindToRenderStep(_, name, priority, fn)
+        if class ~= "RunService" then fail("BindToRenderStep on a " .. class) end
+        if type(priority) ~= "number" then fail("BindToRenderStep priority is not a number") end
+        checks.renderSteps = checks.renderSteps or {}
+        checks.renderSteps[name] = fn
     end
     function methods.GetPlayerFromCharacter(_, character)
         for _, ch in ipairs(self.__children) do
@@ -315,6 +368,8 @@ local function newInstance(class)
                 if not (v and v.ClassName) then error(k .. " must be an Instance") end
             end
             self.__props[k] = v
+            if k == "CFrame" then self.__props.Position = v.Position end
+            if k == "Position" and v and v.__isVector3 then self.__props.CFrame = CFrame.new(v) end
             if self.__propEvents[k] then self.__propEvents[k].fire() end
         end,
     })
@@ -330,9 +385,12 @@ local workspace = newInstance("Workspace"); workspace.Name = "Workspace"; worksp
 local terrain = newInstance("Terrain"); terrain.Name = "Terrain"; terrain.Parent = workspace
 local baseplate = newInstance("Part"); baseplate.Name = "Baseplate"; baseplate.Parent = workspace
 checks.parts = 0
-for _, svc in ipairs({ "Lighting", "ReplicatedStorage", "Players", "StarterPlayer", "ServerScriptService", "RunService" }) do
+for _, svc in ipairs({ "Lighting", "ReplicatedStorage", "Players", "StarterPlayer", "ServerScriptService", "RunService", "Debris" }) do
     local s = newInstance(svc); s.Name = svc; s.Parent = game
 end
+local camera = newInstance("Camera"); camera.Name = "Camera"; camera.CFrame = CFrame.new(0, 10, 0); camera.Parent = workspace
+workspace.CurrentCamera = camera
+workspace.Gravity = 196.2
 
 -- Luau has math.atan2 and plain Lua 5.4 does not; the scripts are Luau.
 local luauMath = setmetatable({
@@ -368,7 +426,7 @@ task.spawn = function(f) checks.spawned = checks.spawned or {}; table.insert(che
 task.delay = function(_, f) task.spawn(f) end
 
 return {
-    env = { Vector3 = Vector3, Vector2 = Vector2, PhysicalProperties = PhysicalProperties,
+    env = { Vector3 = Vector3, Vector2 = Vector2, PhysicalProperties = PhysicalProperties, OverlapParams = OverlapParams,
         CFrame = CFrame, Color3 = Color3, UDim2 = UDim2, UDim = UDim, Enum = Enum,
         Instance = Instance, game = game, workspace = workspace, Random = Random, task = task, os = os,
         math = luauMath, string = string, table = table, ipairs = ipairs, pairs = pairs, print = print,
@@ -433,15 +491,15 @@ def main():
 
     # --- the client script, with the server's info still there ------------
     if info is not None:
+        V3 = mock.env["Vector3"]
         players = mock.game.Players
         player = mock.env["Instance"].new("Player"); player.Name = "Alan"; player.Parent = players
         players.LocalPlayer = player
         gui = mock.env["Instance"].new("PlayerGui"); gui.Name = "PlayerGui"; gui.Parent = player
         character = mock.env["Instance"].new("Model"); character.Name = "Alan"
-        root = mock.env["Instance"].new("Part"); root.Name = "HumanoidRootPart"; root.Parent = character
+        root = mock.env["Instance"].new("Part"); root.Name = "HumanoidRootPart"; root.Size = V3.new(2, 2, 1); root.Parent = character
         player.Character = character
 
-        V3 = mock.env["Vector3"]
         AVE, SU = 70, 27
         spots = [
             ("5th Ave & 34th", V3.new(7 * AVE, 3, -34 * SU)),
@@ -539,6 +597,94 @@ def main():
                     r = lua.eval("function(f) local ok, e = pcall(f); return {ok, e} end")(f)
                     if not r[1] and "STOP" not in str(r[2]):
                         problems.append("BuildNewYork: the taxi reset loop crashed: " + str(r[2]))
+
+    # --- the monster: wait, surface, take the head, chase, stomp, drop a parasite
+    if info is not None:
+        V3 = mock.env["Vector3"]
+        humanoid.Health = 100
+        mock.checks.onWait = None
+        err = run(lua, MONSTER.read_text(), mock.env, "Monster")
+        for e in list(mock.checks.errors.values()):
+            problems.append("Monster: " + e)
+        clear(mock.checks.errors)
+        if err:
+            problems.append(err)
+        else:
+            city = mock.game.Workspace.FindFirstChild(None, "NewYork")
+            monster = city.FindFirstChild(None, "Monster")
+            root = monster.FindFirstChild(None, "Root")
+            head = city.FindFirstChild(None, "Landmarks").FindFirstChild(None, "LibertyHead")
+            heartbeat = mock.game.RunService.Heartbeat
+            root.Position = V3.new(0, 0, 0)  # the character starts far away, at the spawn
+            # keep the player far from it until we want them found
+            root_hrp = root  # alias for readability
+            def far_away():
+                return V3.new(7 * AVE, 3, -34 * SU)
+            root_hrp = None
+            root = monster.FindFirstChild(None, "Root")
+            character.FindFirstChild(None, "HumanoidRootPart").Position = far_away()
+            def run_for(seconds, dt=0.1):
+                for _ in range(int(seconds / dt)):
+                    fire(heartbeat, dt)
+            run_for(59)
+            if info.GetAttribute(None, "Phase") != "calm":
+                problems.append("Monster: surfaced before its DELAY was up")
+            run_for(2)
+            print(f"\nMonster: phase after 61 s is '{info.GetAttribute(None, 'Phase')}', root at y = {root.Position.Y:.0f}")
+            if info.GetAttribute(None, "Phase") != "surfacing":
+                problems.append("Monster: did not start surfacing after DELAY")
+            run_for(60)
+            print(f"  after 2 minutes: phase '{info.GetAttribute(None, 'Phase')}', statue head anchored = {head.Anchored}")
+            if info.GetAttribute(None, "Phase") != "rampage":
+                problems.append("Monster: never reached the statue and started its rampage")
+            if head.Anchored:
+                problems.append("Monster: the Statue of Liberty kept its head")
+            # a player 300 studs away gets chased
+            hrp = character.FindFirstChild(None, "HumanoidRootPart")
+            add = lua.eval("function(a, b) return a + b end")
+            gap = lua.eval("function(a, b) return (a - b).Magnitude end")
+            hrp.Position = add(root.Position, V3.new(300, 0, 0))
+            before = gap(root.Position, hrp.Position)
+            run_for(5)
+            after = gap(root.Position, hrp.Position)
+            print(f"  chase: {before:.0f} studs away, then {after:.0f} five seconds later")
+            if not after < before - 50:
+                problems.append("Monster: did not chase a player inside CHASE_RANGE")
+            # a parasite should have dropped by now (25 s with a player near)
+            run_for(30)
+            parasites = [c for c in city.GetChildren().values() if c.Name == "Parasite"]
+            print(f"  parasites after a while nearby: {len(parasites)}")
+            if not parasites:
+                problems.append("Monster: no parasites dropped while a player was near")
+            # stand under a foot: the next footfall should be fatal
+            foot = monster.FindFirstChild(None, "LHFoot")
+            killed = False
+            for _ in range(200):
+                hrp.Position = foot.Position
+                fire(heartbeat, 0.1)
+                if humanoid.Health == 0:
+                    killed = True
+                    break
+            print(f"  standing under a foot: {'dead' if killed else 'STILL ALIVE'}")
+            if not killed:
+                problems.append("Monster: standing under a foot did not kill the player")
+            # the effects script, a few frames of it
+            humanoid.Health = 100
+            err = run(lua, EFFECTS.read_text(), mock.env, "MonsterEffects")
+            for e in list(mock.checks.errors.values()):
+                problems.append("MonsterEffects: " + e)
+            clear(mock.checks.errors)
+            if err:
+                problems.append(err)
+            else:
+                fn = mock.checks.renderSteps["MonsterEffects"]
+                for _ in range(10):
+                    fn(1 / 60)
+                labels = [i for i in mock.instances.values() if i.ClassName == "TextLabel" and i.Parent is not None and i.Parent.Name == "MonsterEffects"]
+                texts = [str(l.Text) for l in labels if l.Visible]
+                print(f"  on screen: {texts}")
+                if not any("studs" in t for t in texts):
+                    problems.append("MonsterEffects: the distance line never appeared")
 
     print()
     if problems:

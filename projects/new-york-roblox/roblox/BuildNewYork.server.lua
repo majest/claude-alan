@@ -522,9 +522,11 @@ local function buildStatueOfLiberty()
 	-- a low round island
 	Terrain:FillBall(Vector3.new(x, -55, z), 60, Enum.Material.Grass)
 	local green = Color3.fromRGB(95, 165, 150)
-	box(Vector3.new(18, 30, 18), CFrame.new(x, 20, z), STONE, Enum.Material.Cobblestone, F.landmarks)
+	local pedestal = box(Vector3.new(18, 30, 18), CFrame.new(x, 20, z), STONE, Enum.Material.Cobblestone, F.landmarks)
 	cylinder(30, 9, Vector3.new(x, 50, z), green, Enum.Material.Metal, F.landmarks)
+	-- the head has a name because the Monster script comes for it
 	local head = ball(7, Vector3.new(x, 68, z), green, Enum.Material.Metal, F.landmarks)
+	head.Name = "LibertyHead"
 	-- the crown: seven spikes
 	for i = 0, 6 do
 		local ang = math.rad(-120 + i * 40)
@@ -534,7 +536,7 @@ local function buildStatueOfLiberty()
 	-- the arm and the torch
 	beam(Vector3.new(x + 4, 60, z), Vector3.new(x + 10, 86, z), 3, green, Enum.Material.Metal, F.landmarks)
 	ball(5, Vector3.new(x + 10, 87, z), Color3.fromRGB(255, 200, 80), Enum.Material.Neon, F.landmarks)
-	label(head, "Statue of Liberty", 30)
+	label(pedestal, "Statue of Liberty", 80)
 end
 
 local function buildRooseveltIsland()
